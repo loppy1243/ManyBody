@@ -8,8 +8,15 @@ struct PairingParticle{Levels} <: SPState
     end
 end
 
-pnum(sp::Int) = sp
-pnum(sp::PairingParticle) = 2(s.level-1) + 1 + Bool(s.spin)
+function PairinParticle{L}(s::IntState{PairingParticle{L}}) where L
+end
+
+Base.:(==)(::PairingParticle, ::PairingParticle) = false
+Base.:(==)(p1::PairingParticle{L}, p2::PairingParticle{L}) where L =
+    p1.level == p2.level && p1.spin == p2.spin
+
+snum(sp::Int) = sp
+snum(sp::PairingParticle) = 2(s.level-1) + 1 + Bool(s.spin)
 
 function particle(::Type{PairingParticle{L}}, pn::Int) where L
     spin_num = Bool(1 - pn % 2)
@@ -18,8 +25,22 @@ function particle(::Type{PairingParticle{L}}, pn::Int) where L
     PairingParticle{L}(level, Spin(spin_num))
 end
 
-nlevels(sp::PairingParticle{L}) where L = L
+nlevels(::Type{PairingPartivle{L}}) where L = L
 level(sp::PairingParticle) = s.level
 spin(sp::PairingParticle) = s.spin
 
-iter(P::Type{PairingParticle{L}}) where L = (PairingParticle{L}(l, s) for l = 1:L, s in SPINS)
+states(::Type{PairingParticle{L}}) where L =
+    (PairingParticle{L}(l, s) for l = 1:L, s in SPINS)
+
+nstates(p::ParitingParticle{L}) where L = 2L
+
+RefStates.nparts(::Type{Fermi{F, PairingParticle{L}}}) where {F, L} = 2(L-F)
+RefStates.nholes(::Type{Fermi{F, PairingParticle{L}}}) where {F, L} = 2F
+
+RefStates.pnum(::Type{Fermi{F, PairingParticle{L}}}, s::PairingParticle{L}) where {F, L} =
+    pnum(s) - nholes(s) + 1
+RefStates.hnum(::Type{Fermi{F, PairingParticle{L}}}, s::PairingParticle{L}) where {F, L} =
+    pnum(s)
+
+RefStates.isocc(::Type{Fermi{F, PairingParticle{L}}}, s::PairingParticle{L}) where {F, L} =
+    level(s) <= F
