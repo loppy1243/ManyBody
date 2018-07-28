@@ -20,11 +20,11 @@ struct MBState{R<:RefState, SP<:SPState}
     end
 end
 MBState{R, SP}(phs::Vararg{Tuple{SP, SP}}) where {R, SP} = MBState{R, SP}(phs)
-MBState{R, SP}(phs::Vararg{Tuple{Int, Int}} where {R, SP} = MBState{R, SP}(phs)
+MBState{R, SP}(phs::Vararg{Tuple{Int, Int}}) where {R, SP} = MBState{R, SP}(phs)
 MBState(phs::Vararg{Tuple{SP, SP}}) where SP = MBState{Vaccuum{SP}, SP}(phs)
 
 Base.:(==)(::MBState, ::MBState) = false
-Base.:(==)(s1::MBState{R, S}, s2::MBState{R, S}) =
+Base.:(==)(s1::MB, s2::MB) where MB<:MBState =
     s1.parts == s2.parts && s1.holes == s2.holes
 
 function snum(s::MBState)

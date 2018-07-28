@@ -1,7 +1,7 @@
 @reexport module RefStates
-export particles, holes
+export Vacuum, Fermi, parts, holes, nparts, pnum, hnum, isocc
 
-using ..RefState, ..SPState, ..level, ..states
+using ..States
 
 struct Vacuum{SP<:SPState} <: RefState end
 struct Fermi{F, SP<:SPState} <: RefState end
@@ -31,7 +31,9 @@ hnum(r::Type{Vacuum{SP}}, s::SP) where SP = 0
 hnum(::Type{Fermi{F, PairingParticle{L}}}, s::PairingParticle{L}) where {F, L} =
     pnum(s)
 
-isocc(::Type{R}, s) where {R<:RefState, SP} = s in holes(R)
+isocc(::Type{R}, s) where R<:RefState = s in holes(R)
 isocc(::Type{Vacuum{SP}}, s::SP) where SP = false
+isocc(::Type{Fermi{F, PairingParticle{L}}}, s::PairingParticle{L}) where {F, L} =
+    level(s) <= F
 
 end # module RefStates

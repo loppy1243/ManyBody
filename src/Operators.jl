@@ -5,8 +5,8 @@ export Operator, SPOperator, MBOperator, tabulate, refop, RaiseOp, LowerOp, Rais
 using Combinatorics: permutations, levicivita
 using ..States
 
-
 abstract type Operator{Basis<:SPState, Rep} end
+
 macro def_OperatorNBody(N::Int)
     _def_OperatorNBody(N, Symbol("Operator$(N)Body"))
 end
@@ -24,7 +24,7 @@ function _def_OperatorNBody(N::Int, sym::Symbol)
 
     quote
         struct $ty_sym{Basis<:SPState, Rep} <: Operator{Basis, Rep}
-            $(esc(:os))::Rep
+            op::Rep
         end
 
         Operators.nbodies(::Type{<:$ty_sym}) = $N
@@ -32,11 +32,12 @@ function _def_OperatorNBody(N::Int, sym::Symbol)
             op.op($(sp_syms...))
         (op::$ty_sym{$Basis_sym, <:Function})($(sp_args...)) where $Basis_sym<:IntState =
             op.op($(sp_sym_nums...))
-        (op::$ty_sym{$Basis_sym, <:AbstractArray{T, $(2N)}})($(sps_args...)) where
+        (op::$ty_sym{$Basis_sym, <:AbstractArray{T, $(2N)}})($(sp_args...)) where
                 {$Basis_sym<:IntState, T} =
             op.op[$(sp_sym_nums...)]
     end
 end
+nbodies() = MethodError(nbodies, ()) |> throw
 
 for i = 1:3; @eval @def_OperatorNBody $i; end
 @def_OperatorNBody 1 MBOperator
@@ -97,11 +98,11 @@ contract(::Type{<:RefState}, a1::OP, a2::OP) where OP<:RLOp = 0
 contract(::Type{Vacuum{SP}}, a1::RaiseOp{SP}, a2::LowerOp{SP}) where SP = 0
 contract(::Type{Vacuum{SP}}, a1::LowerOp{SP}, a2::RaiseOp{SP}) where SP =
     a1.state == a2.state
-contract(::Type{R}, a1::RaiseOp{SP}, a2::LowerOp{SP}) =
+contract(::Type{R}, a1::RaiseOp{SP}, a2::LowerOp{SP}) where {R, SP}=
     a1.state == a2.state ? isocc(R, a1.state) : 0
-contract(::Type{R}, a1::LowerOp{SP}, a2::RaiseOp{SP}) =
+contract(::Type{R}, a1::LowerOp{SP}, a2::RaiseOp{SP}) where {R, SP} =
     a1.state == a2.state ? ~isocc(R, a1.state) : 0
-contract(::Type{R}, a::RLOp{SP}) where SP = 0
+contract(::Type{R}, a::RLOp{SP}) where {R, SP} = 0
 function contract(::Type{R}, a::RaiseLowerOps) where R<:RefState
     numops = n_ops(a)
     isodd(numops) && return 0
@@ -113,7 +114,10 @@ function contract(::Type{R}, a::RaiseLowerOps) where R<:RefState
     end
 end
 
-(::RLOp{SP})(::MBState{R, SP}, ::MBState{R, SP}) where {R, SP} = 0
+for op_ty in [RaiseOp, LowerOp]
+    @eval (::$op_ty{SP})(::MBState{R, SP}, ::MBState{R, SP}) where {R, SP} = 0
+end
+
 function (a::RaiseLowerOps{SP})(X::MBState{R, SP}, Y::MBState{R, SP}) where {R, SP}
     bra_rl_op = refop(X)'
     ket_rl_op - refop(Y)
