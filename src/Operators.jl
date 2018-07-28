@@ -1,25 +1,53 @@
-@reexport module OperatorsMod
+@reexport module Operators
 export Operator, SPOperator, MBOperator, tabulate, refop, RaiseOp, LowerOp, RaiseLowerOps, A,
-       refop, contract, 
+       refop, contract
 
 using Combinatorics: permutations, levicivita
 using ..States
 
-struct Operator{B, Basis<:SPState, Op}
-    op::Op
-end
-const SPOPerator = Operator
-const MBOperator{Basis<:SPState, Op} = Operator{1, Basis, Op}
 
-(op::Operator{B, Basis, <:Function})(sps::Vararg{Basis, 2B}) where {B, Basis} = op.op(sps...)
-(op::Operator{B, Basis, <:AbstractArray{T, 2B}})(sps::Vararg{Basis, 2B}) where {B, Basis, T} =
-    op.op[map(pnum, sps)...]
+abstract type Operator{Basis<:SPState, Rep} end
+macro def_OperatorNBody(N::Int)
+    _def_OperatorNBody(N, Symbol("Operator$(N)Body"))
+end
+macro def_OperatorNBody(N::Int, sym::Symbol)
+    _def_OperatorNBody(N, sym)
+end
+function _def_OperatorNBody(N::Int, sym::Symbol)
+    ty_sym = esc(sym)
+
+    Basis_sym = esc(gensym("Basis"))
+
+    sp_syms = [Symbol("sp$i") for i = 1:2N]
+    sp_sym_nums = map(x -> :(x.num), sp_syms)
+    sp_args = map(x -> :($x::$Basis_sym), sp_syms)
+
+    quote
+        struct $ty_sym{Basis<:SPState, Rep} <: Operator{Basis, Rep}
+            $(esc(:os))::Rep
+        end
+
+        Operators.nbodies(::Type{<:$ty_sym}) = $N
+        (op::$ty_sym{$Basis_sym, <:Function})($(sp_args...)) where $Basis_sym =
+            op.op($(sp_syms...))
+        (op::$ty_sym{$Basis_sym, <:Function})($(sp_args...)) where $Basis_sym<:IntState =
+            op.op($(sp_sym_nums...))
+        (op::$ty_sym{$Basis_sym, <:AbstractArray{T, $(2N)}})($(sps_args...)) where
+                {$Basis_sym<:IntState, T} =
+            op.op[$(sp_sym_nums...)]
+    end
+end
+
+for i = 1:3; @eval @def_OperatorNBody $i; end
+@def_OperatorNBody 1 MBOperator
+
+nbodies(op::Operator) = nbodies(typeof(op))
 
 tabulate(op::Operator) = tabulate(Float64, op)
-tabulate(op::Operator{B, Basis, <:AbstractArray}) where {B, Basis} = op
-function tabulate(T::Type, op::Operator{B, Basis, Op}) where {B, Basis, Op}
+tabulate(op::Operator{Basis, <:AbstractArray}) where Basis<:IntState = op
+function tabulate(T::Type, op::Operator{Basis, Op}) where {Basis, Op}
     states = iter(Basis) |> collect
-    statenums = map(pnum, states)
+    statenums = map(snum, states)
     numstates = length(states)
 
     mat = Array{T, 2B}(fill(numstates, 2B)...)
@@ -28,7 +56,7 @@ function tabulate(T::Type, op::Operator{B, Basis, Op}) where {B, Basis, Op}
         mat[statenums[ixs]...] = op(states[ixs]...)
     end
 
-    Operator{B, Basis, typeof(mat), T}(mat)
+    Operator{IntState{Basis}, typeof(mat)}(mat)
 end
 
 struct RaiseOp{SP<:SPState}; state::SP end
@@ -93,4 +121,4 @@ function (a::RaiseLowerOps{SP})(X::MBState{R, SP}, Y::MBState{R, SP}) where {R, 
     contract(R, bra_rl_op*a*ket_rl_op)
 end
 
-end # module OperatorsMod
+end # module Operators
