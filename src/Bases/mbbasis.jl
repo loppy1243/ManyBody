@@ -52,3 +52,45 @@ function indexbasis(::Type{MBBasis{R, SP}}, ix::Int) where {R, SP}
 end
 
 dim(::Type{MBBasis{RS, SP}}) where {RS, SP} = 2^dim(SP) - 1
+
+
+abstract type SubBasis
+macro def_SubBasis(expr::Expr)
+end
+
+@def_SubBasis Paired{R, L} <: MBBasis{R, Pairing{L}}
+struct PairedIndices{R, L, N}
+    indices::NTuple{N, Int}
+
+    PairedIndices{R, L, N}() where {R, L, N} = new([ixs(R, L, N)...])
+end
+PairedIndices{R, L}() where {R, L} = PairedIndices{R, L, x}()
+
+struct Paired{R, L}
+    index::Int
+
+    Paired{R, L}(x::Int) = new(x)
+    Paired{R, L}(x::MBBasis{R, Pairing{L}}) = new(index(x))
+end
+
+struct SubBasis{B<:Basis, N}
+    indices::Vector{Int}
+
+    function SubBasis{B, N}(ixs) where {B<:Basis, N}
+        ixs = collect(Int, ixs) |> sort
+
+        @assert ixs == unique(ixs)
+        @assert length(ixs) == N
+        @assert ixs[end] <= dim(B)
+
+        new(ixs)
+    end
+end
+SubBasis{B}(xs...) where B = SubBasis{B}(xs)
+SubBasis{B}(xs::NTuple{N, B}) where {N, B<:Basis} = SubBasis{B, N}(map(index, xs))
+SubBasis{B}(xs::NTuple{N, Int}) where {N, B} = SubBasis{B, N}(xs)
+
+SubBasis(ixs...) = SubBasis(ixs)
+SubBasis(ss::NTuple{N, B}) where {B<:Basis, N} = SubBasis{B, N}(map(index, ss))
+
+dim(::Type{SubBasis{B, N}}) where {B, N} = N
