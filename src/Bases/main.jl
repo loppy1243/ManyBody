@@ -1,39 +1,26 @@
 @reexport module Bases
-export RefStates, State, Basis, SPBasis, RefState, Index, MBBasis, Bra, overlap, indexes, dim,
-       indexbasis, index
+export RefStates, State, Basis, SPBasis, RefState, MBBasis, Bra, overlap
+# Basis interface
+export index, indexbasis, dim #, Base.indices
 
 using Reexport: @reexport
 
 abstract type State end
-abstract type RefState end
 abstract type Basis <: State end
 abstract type SPBasis <: Basis end
+abstract type MBBasis <: Basis end
 
-Base.getindex(::Type{B}, ixs) where B<:Basis = indexbasis(B, ixs)
-Base.getindex(::Type{B}, ixs...) where B<:Basis = indexbasis(B, ixs)
+Base.:(==)(x::Basis, y::Basis) = false
+Base.:(==)(x::B, y::B) where B<:Basis = index(x) == index(y)
+
+Base.getindex(::Type{B}, ixs...) where B<:Basis = indexbasis(B, ixs...)
+Base.getindex(::Type{B}, ixs::Array) where B<:Basis = map(i -> indexbasis(B, i), ixs)
 
 Base.start(::Type{B}) where B<:Basis = start(basis(B))
 Base.next(::Type{B}, st) where B<:Basis = next(basis(B), st)
 Base.done(::Type{B}, st) where B<:Basis = done(basis(B), st)
 
-struct Index{SP<:SPBasis} <: SPBasis
-    index::Int
-end
-Index(s::SPBasis) = Index{typeof(s)}(index(s))
-
 Base.indices(::Type{B}) where B<:Basis = 1:dim(B)
-indexes(::Type{B}) where B<:Basis = map(Index{B}, indices(B))
-
-index(s::Index) = s.index
-indexbasis(::Type{S}, s::Int) where S<:Index = S(s)
-basis(::Type{Index{B}}) where B = indexes(B)
-dim(::Type{Index{B}}) where B = dim(B)
-
-Base.convert(::Type{Index{B}}, s::B) where B = Index{B}(index(s))
-Base.convert(::Type{Index}, s::Basis) = Index{typeof(s)}(index(s))
-Base.convert(::Type{B}, s::Index{B}) where B<:Basis = B(s)
-
-SP(s::Index{SP}) where SP<:SPBasis = SP[s.index]
 
 struct Bra{S<:State}; state::S end
 
@@ -44,8 +31,10 @@ Base.:*(bra::Bra, ket::State) = overlap(bra.state, ket.state)
 
 overlap(a, b) = MethodError(overlap, (a, b)) |> throw
 
+include("indexbasis.jl")
 include("pairing.jl")
 include("refstates.jl")
 include("mbbasis.jl")
+include("subbasis.jl")
 
 end # module States

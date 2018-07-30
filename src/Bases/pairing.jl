@@ -1,5 +1,4 @@
 export Pairing, level, nlevels, spin, flipspin
-
 import .RefStates
 using ..SpinMod
 
@@ -15,7 +14,6 @@ end
 
 flipspin(p::Pairing) = typeof(p)(level(p), flip(spin(p)))
 
-Base.:(==)(::Pairing, ::Pairing) = false
 Base.:(==)(p1::Pairing{L}, p2::Pairing{L}) where L =
     p1.level == p2.level && p1.spin == p2.spin
 

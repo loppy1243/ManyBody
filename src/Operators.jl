@@ -1,11 +1,10 @@
 @reexport module Operators
-export Operator, SPOperator, MBOperator, tabulate, refop, RaiseOp, LowerOp, RaiseLowerOps, A,
-       refop, contract, set_default_basis!, set_default_refstate!, @default_basis!,
-       @default_refstate!, @Operator, @MBOperator, @OperatorNBody, OperatorNBody_sym
-
+export Operator, tabulate, refop, RaiseOp, LowerOp, RaiseLowerOps, A, refop, contract,
+       set_default_basis!, set_default_refstate!, @default_basis!, @Operator, @OperatorNBody
 using Combinatorics: permutations, levicivita
 using Loppy.Util: cartesian_pow
 using ..Bases
+using ..Bases: Index
 
 abstract type Operator{B<:Basis, Rep} end
 
@@ -50,7 +49,6 @@ for i = 1:3
     @eval @def_OperatorNBody $i
     @eval export $(OperatorNBody_sym(i))
 end
-@def_OperatorNBody 1 MBOperator
 
 nbodies(op::Operator) = nbodies(typeof(op))
 
@@ -136,7 +134,7 @@ end
 n_ops(::RLOp) = 1
 n_ops(a::RaiseLowerOps) = length(a.ops)
 
-function refop(s::MBBasis{R, SP}) where {R, SP}
+function refop(s::Bases.PartHole{R}) where {SP, R<:RefState{SP}}
     a = RaiseLowerOps{SP}(map(x -> RaiseOp{SP}(indexp(R, x)), find(s.parts)))
     b = RaiseLowerOps{SP}(map(x -> LowerOp{SP}(indexh(R, x)), find(s.holes)))
     a*b
@@ -160,10 +158,10 @@ function contract(R::Type, a::RaiseLowerOps)
 end
 
 for op_ty in [RaiseOp, LowerOp]
-    @eval (::$op_ty{SP})(::MBBasis{R, SP}, ::MBBasis{R, SP}) where {R, SP} = 0
+    @eval (::$op_ty)(::MB, ::MB) where MB<:MBBasis = 0
 end
 
-function (a::RaiseLowerOps{SP})(X::MBBasis{R, SP}, Y::MBBasis{R, SP}) where {R, SP}
+function (a::RaiseLowerOps)(X::MB, Y::MB) where MB<:MBBasis
     bra_rl_op = refop(X)'
     ket_rl_op = refop(Y)
     
@@ -174,7 +172,6 @@ DEFAULT_BASIS = nothing
 DEFAULT_REFSTATE = nothing
 
 set_default_basis!(::Type{B}) where B<:Basis = global DEFAULT_BASIS = B
-set_default_refstate!(::Type{R}) where R<:RefState = global DEFAULT_REFSTATE = R
 
 macro default_basis!(sym::Symbol)
     :(set_default_basis!($(esc(sym))))
@@ -197,26 +194,6 @@ macro default_basis!(expr::Expr)
     end
 end
 
-macro default_refstate!(sym::Symbol)
-    :(set_default_refstate!($(esc(sym))))
-end
-macro default_refstate!(expr::Expr)
-    if expr.head == :curly || expr.head == :.
-        return :(set_default_refstate!($(esc(expr))))
-    end
-    @assert expr.head == :(=) && (expr.args[1] isa Symbol || expr.args[1].head != :call) #=
-         =# || expr.head == :const
-
-    is_const = expr.head == :const
-    name = is_const ? expr.args[1].args[1] : expr.args[1]
-
-    expr = is_const ? Expr(:const, expr) : expr
-    quote
-        $(esc(expr))
-        set_default_refstate!($(esc(name)))
-    end
-end
-
 macro Operator(expr)
     :(@Operator($(esc(expr)), DEFAULT_BASIS))
 end
@@ -229,19 +206,6 @@ macro Operator(expr::Expr, basis)
     quote
         x = $(esc(expr))
         @OperatorNBody($nbodies){$(esc(basis)), typeof(x)}(x)
-    end
-end
-
-macro MBOperator(expr)
-    :(@MBOperator($(esc(expr)), DEFAULT_REFSTATE, DEFAULT_BASIS))
-end
-macro MBOperator(expr::Expr, refstate, basis)
-    @assert expr.head == :(->) && expr.args[1].head == :tuple
-    @assert length(expr.args[1].args) == 2
-
-    quote
-        x = $(esc(expr))
-        MBOperator{MBBasis{$(esc(refstate)), $(esc(basis))}, typeof(x)}(x)
     end
 end
 
