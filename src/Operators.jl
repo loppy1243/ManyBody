@@ -100,7 +100,7 @@ A(::Type{SP}, p::Bra{SP}) where SP<:SPBasis = A(p)
 
 A(::Type{SP}, sps::Tuple{Vararg{Union{SP, Bra{SP}, Raised{SP}}, N}}) where {SP, N} = A(sps)
 @generated function A(sps::Tuple{Vararg{Union{SP, Bra{SP}, Raised{SP}}, N}}) where {SP, N}
-    args = map(enumerate(sps.types)) do x
+    args = map(enumerate(sps.parameters)) do x
         i, T = x
         if T <: Bra
             :(RaiseOp{SP}(sps[$i].state))
@@ -116,7 +116,7 @@ end
 @generated function A(::Type{SP},
                       sps::Tuple{Vararg{Union{Int, Index{SP}, Raised{Int},
                                               Raised{Index{SP}}}, N}}) where {SP, N}
-    args = map(enumerate(sps.types)) do x
+    args = map(enumerate(sps.parameters)) do x
         i, T = x
 
         if T <: Index
