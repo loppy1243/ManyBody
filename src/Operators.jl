@@ -27,6 +27,7 @@ function _def_OperatorNBody(N::Int, sym::Symbol)
     sp_syms = [Symbol("sp$i") for i = 1:2N]
     sp_sym_nums = map(x -> :(index($x)), sp_syms)
     sp_args = map(x -> :($x::$Basis_sym), sp_syms)
+    sp_sub_args = map(x -> :($x::SubBasis{$Basis_sym}), sp_syms)
 
     quote
         struct $ty_sym{B<:Basis, Rep} <: Operator{B, Rep}
@@ -34,10 +35,10 @@ function _def_OperatorNBody(N::Int, sym::Symbol)
         end
 
         Operators.nbodies(::Type{<:$ty_sym}) = $N
+        (op::$ty_sym{$Basis_sym})($(sp_sub_args...)) where $Basis_sym =
+            op($(map(x -> :($x.state), sp_syms)))
         (op::$ty_sym{$Basis_sym, <:Function})($(sp_args...)) where $Basis_sym =
             op.op($(sp_syms...))
-        (op::$ty_sym{$Basis_sym, <:Function})($(sp_args...)) where $Basis_sym<:Index =
-            op.op($(sp_sym_nums...))
         (op::$ty_sym{$Basis_sym, <:AbstractArray{T, $(2N)}})($(sp_args...)) where
                 {$Basis_sym, T} =
             op.op[$(sp_sym_nums...)]
@@ -53,12 +54,12 @@ end
 nbodies(op::Operator) = nbodies(typeof(op))
 
 tabulate(op::Operator) = tabulate(Complex64, op)
-tabulate(op::Operator{B, <:AbstractArray}) where B<:Index = op
-function tabulate(T::Type, op::Operator{B, Op}) where {B, Op}
+tabulate(op::Operator{<:Index, <:AbstractArray}) = op
+function tabulate(::Type{T}, op::Operator{B, Op}) where {T, B, Op}
     n = 2nbodies(typeof(op))
     mat = Array{T}(fill(dim(B), n)...)
-    for ixs in cartesian_pow(indices(B), n)
-        mat[CartesianIndex(ixs)] = op(map(i -> B[i], ixs)...)
+    for ss in cartesian_pow(B, n)
+        mat[CartesianIndex(map(index, ss))] = op(ss...)
     end
 
     Operator{Index{B}, typeof(mat)}(mat)
@@ -69,6 +70,8 @@ struct Raised{T}; val::T end
 
 struct RaiseOp{SP<:SPBasis}; state::SP end
 struct LowerOp{SP<:SPBasis}; state::SP end
+RaiseOp(s::SubBasis{SP}) where SP = RaiseOp{SP}(s.state)
+LowerOp(s::SubBasis{SP}) where SP = LowerOp{SP}(s.state)
 const RLOp{SP} = Union{RaiseOp{SP}, LowerOp{SP}}
 
 struct RaiseLowerOps{SP<:SPBasis}
@@ -91,49 +94,52 @@ Base.ctranspose(op::RaiseLowerOps{SP}) where SP =
 A(sps...) = A(sps)
 A(T::Type, sps...) = A(T, sps)
 
-A(p::SPBasis) = LowerOp{typeof(p)}(p)
-A(p::Bra{<:SPBasis}) = RaiseOp{typeof(p.state)}(p.state)
-A(::Type{SP}, p::SP) where SP<:SPBasis = A(p)
-A(::Type{SP}, p::Bra{SP}) where SP<:SPBasis = A(p)
+const SPSubBasis{SP<:SPBasis} = Union{SP, <:SubBasis{SP}}
+const MBSubBasis{MB<:MBBasis} = Union{MB, <:SubBasis{MB}}
 
-A(::Type{SP}, sps::Tuple{Vararg{Union{SP, Bra{SP}, Raised{SP}}, N}}) where {SP, N} = A(sps)
-@generated function A(sps::Tuple{Vararg{Union{SP, Bra{SP}, Raised{SP}}, N}}) where {SP, N}
+A(p::SPSubBasis) = LowerOp(p)
+A(p::Bra{<:SPSubBasis}) = RaiseOp(p.state)
+
+#A(::Type{SP}, sps::NTuple{N, Union{T, Bra{T}, Raised{T}}}) where {SP, N, T<:SPSubBasis{SP}} =
+#    A(sps)
+@generated function A(sps::NTuple{N, Union{T, Bra{T}, Raised{T}}}) where {SP, T<:SPSubBasis{SP}, N}
     args = map(enumerate(sps.parameters)) do x
         i, T = x
         if T <: Bra
-            :(RaiseOp{SP}(sps[$i].state))
+            :(RaiseOp(sps[$i].state))
         elseif T <: Raised
-            :(RaiseOp{SP}(sps[$i].val))
+            :(RaiseOp(sps[$i].val))
         else
-            :(LowerOp{SP}(sps[$i]))
+            :(LowerOp(sps[$i]))
         end
     end
 
     :(RaiseLowerOps{SP}([$(args...)]))
 end
-@generated function A(::Type{SP},
-                      sps::Tuple{Vararg{Union{Int, Index{SP}, Raised{Int},
-                                              Raised{Index{SP}}}, N}}) where {SP, N}
-    args = map(enumerate(sps.parameters)) do x
-        i, T = x
-
-        if T <: Index
-            :(LowerOp{Index{SP}}(sps[$i]))
-        elseif T == Int
-            :(LowerOp{Index{SP}}(sps[$i]))
-        elseif T == Raised{Int}
-            :(RaiseOp{Index{SP}}(sps[$i].val))
-        else
-            :(RaiseOp{Index{SP}}(sps[$i]))
-        end
-    end
-
-    :(RaiseLowerOps{Index{SP}}([$(args...)]))
-end
+#@generated function A(::Type{SP},
+#                      sps::NTuple{N, Union{Int, Index{SP}, Raised{Int},
+#                                           Raised{Index{SP}}}}) where {SP, N}
+#    args = map(enumerate(sps.parameters)) do x
+#        i, T = x
+#
+#        if T <: Index
+#            :(LowerOp{Index{SP}}(sps[$i]))
+#        elseif T == Int
+#            :(LowerOp{Index{SP}}(sps[$i]))
+#        elseif T == Raised{Int}
+#            :(RaiseOp{Index{SP}}(sps[$i].val))
+#        else
+#            :(RaiseOp{Index{SP}}(sps[$i]))
+#        end
+#    end
+#
+#    :(RaiseLowerOps{Index{SP}}([$(args...)]))
+#end
 
 n_ops(::RLOp) = 1
 n_ops(a::RaiseLowerOps) = length(a.ops)
 
+refop(s::SubBasis{B}) where B<:MBBasis = refop(s.state)
 function refop(s::Bases.PartHole{R}) where {SP, R<:RefState{SP}}
     a = RaiseLowerOps{SP}(map(x -> RaiseOp{SP}(indexp(R, x)), find(s.parts)))
     b = RaiseLowerOps{SP}(map(x -> LowerOp{SP}(indexh(R, x)), find(s.holes)))
@@ -141,18 +147,20 @@ function refop(s::Bases.PartHole{R}) where {SP, R<:RefState{SP}}
 end
 
 contract(::Type, a1::OP, a2::OP) where OP<:RLOp = 0
-contract(R::Type, a1::RaiseOp{SP}, a2::LowerOp{SP}) where SP =
+contract(::Type{Bases.PartHole{R}}, a1::RaiseOp{SP}, a2::LowerOp{SP}) where
+        {SP, R<:RefState{SP}} =
     a1.state == a2.state ? isocc(R, a1.state) : 0
-contract(R::Type, a1::LowerOp{SP}, a2::RaiseOp{SP}) where SP =
+contract(::Type{Bases.PartHole{R}}, a1::LowerOp{SP}, a2::RaiseOp{SP}) where
+        {SP, R<:RefState{SP}} =
     a1.state == a2.state ? ~isocc(R, a1.state) : 0
 contract(::Type, a::RLOp) = 0
-function contract(R::Type, a::RaiseLowerOps)
+function contract(MB::Type, a::RaiseLowerOps)
     numops = n_ops(a)
     isodd(numops) && return 0
 
     sum(permutations(1:numops)) do perm
         prod(1:div(numops, 2)) do k
-            levicivita(perm)*contract(R, a.ops[perm[2k-1]], a.ops[perm[2k]])
+            levicivita(perm)*contract(MB, a.ops[perm[2k-1]], a.ops[perm[2k]])
         end
     end
 end
@@ -161,11 +169,11 @@ for op_ty in [RaiseOp, LowerOp]
     @eval (::$op_ty)(::MB, ::MB) where MB<:MBBasis = 0
 end
 
-function (a::RaiseLowerOps)(X::MB, Y::MB) where MB<:MBBasis
+function (a::RaiseLowerOps)(X::MBSubBasis{MB}, Y::MBSubBasis{MB}) where MB<:MBBasis
     bra_rl_op = refop(X)'
     ket_rl_op = refop(Y)
     
-    contract(R, bra_rl_op*a*ket_rl_op)
+    contract(MB, bra_rl_op*a*ket_rl_op)
 end
 
 DEFAULT_BASIS = nothing

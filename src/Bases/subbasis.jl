@@ -3,20 +3,18 @@ using Combinatorics: combinations
 using Loppy.Util: cartesian_pow
 using ..SpinMod
 
-struct SubBasis{B<:Basis, T}
+struct SubBasis{B<:Basis, T} <: Basis
     state::B
-
-    SubBasis{B, T}(s::B) where {B<:Basis, T} = new(B)
 end
 
 Base.:(==)(x::SB, y::SB) where SB<:SubBasis = x.state == y.state
 
-dim(::Type{SB}) where SB<:SubBasis = length(subindices(B))
-index(x::SubBasis) = findin(subindices, index(x))
+dim(::Type{SB}) where SB<:SubBasis = length(subindices(SB))
+index(x::SubBasis) = findfirst(basis(typeof(x)), x)
 indexbasis(::Type{SB}, i) where {B, SB<:SubBasis{B}} = basis(SB)[i]
 
 subindices(::Type{B}) where B<:Basis = indices(B)
-subindexes(::Type{SB}) where {B, SB<:SubBasis{B}} = map(Index{B}, subindices(SB))
+subindexes(::Type{SB}) where SB<:SubBasis = map(Index{SB}, subindices(SB))
 
 macro defSubBasis(ty_expr::Expr, expr)
     @assert ty_expr.head == :(<:)
@@ -48,7 +46,7 @@ macro defSubBasis(ty_expr::Expr, expr)
             x = (() -> $(esc(expr)))()
             x = convert(Vector{$base_ty_esc}, x)
             @assert allunique(x)
-            x
+            map($new_ty_esc, x)
         end
         @generated $(subindices_expr(:T)) = map(index, basis(T.parameters[1]))
     end

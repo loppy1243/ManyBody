@@ -8,23 +8,21 @@ using .ManyBody
 const LEVEL_SPACING = 1
 const SPBASIS = Bases.Pairing{4}
 const REFSTATE = RefStates.Fermi{2, SPBASIS}
-const MBBASIS = Bases.PartHole{REFSTATE}
-#const INDICES = indices(BASIS)
+const MBBASIS = Bases.PHPaired{2, 4}
+#const INDICES = indices(SPBASIS)
 #const PARTS = parts(REFSTATE)
 #const HOLES = holes(REFSTATE)
 
-const f_sp = @Operator(BASIS) do p, q
-    LEVEL_SPACING*(level(p)-1)
-end
-
 const f_mb = @Operator(MBBASIS) do X, Y
     println("f: ", (index(X), index(Y)))
-    sum(BASIS) do p
-        f_sp(p, p)*A(p', p)(X, Y)
+    sum(SPBASIS) do p
+        if X == Y && p in X
+            LEVEL_SPACING*(level(p)-1)
+        end
     end
 end
 
-V_sp(g) = @Operator(BASIS) do p, q, r, s
+V_sp(g) = @Operator(SPBASIS) do p, q, r, s
     if level(p) == level(q) && level(r) == level(s) #=
     =# && spin(p) != spin(q) && spin(r) != spin(s)
         spin(p) == spin(r) ? -g/2 : g/2
@@ -37,7 +35,7 @@ function V_mb(g)
     V = V_sp(g)
     @Operator(MBBASIS) do X, Y
         println("V: ", (index(X), index(Y)))
-        sum(cartesian_pow(BASIS, Val{2})) do I
+        sum(cartesian_pow(SPBASIS, Val{2})) do I
             p, r = I
             q = flipspin(p)
             s = flipspin(r)
