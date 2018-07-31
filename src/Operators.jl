@@ -195,6 +195,50 @@ function (a::RaiseLowerOps)(X::MBSubBasis{MB}, Y::MBSubBasis{MB}) where MB<:MBBa
     contract(MB, bra_rl_op*a*ket_rl_op)
 end
 
+function (a::RaiseLowerOps)(X::MBSubBasis{Bases.PartHole{R}}) where R
+    Y = convert(Bases.PartHole, X)
+
+    a = a.ops
+    b = refop(X).ops
+    states = map(c -> c.state, b)
+    p = sortperm(ixs)
+    ixs = ixs[p]
+    b = b[p]
+    sgn = levicivita(p)
+
+    for i in length(a):-1:1
+        if a[i] in b #=
+        =# || a[i] isa RaiseOp && isocc(R, a[i].state) #=
+        =# || a[i] isa LowerOp && ~isocc(R, a[i].state)
+
+            return ZeroState
+        elseif 0 != (x = findfirst(states, a[i].state))
+            if a[i] isa RaiseOp
+                rmhole!(Y, a[i].state)
+            else
+                rmpart!(Y, a[i].state)
+            end
+
+            sgn *= (-1)^(x-1)
+            deleteat!(states, x)
+            deleteat!(b, x)
+        else
+            if a[i] isa RaiseOp
+                addpart!(Y, a[i].state)
+            else
+                addhole!(Y, a[i].state)
+            end
+
+            x = searchsorted(states, a[i].state)
+            sgn *= (-1)^(x-1)
+            insert!(states, x)
+            insert!(b, RaiseOp(x))
+        end
+    end
+
+    sgn*CVecState(Y)
+end
+
 DEFAULT_BASIS = nothing
 DEFAULT_REFSTATE = nothing
 
