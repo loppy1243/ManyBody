@@ -36,5 +36,6 @@ include("pairing.jl")
 include("refstates.jl")
 include("mbbasis.jl")
 include("subbasis.jl")
+include("states.jl")
 
 end # module States
