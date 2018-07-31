@@ -1,4 +1,4 @@
-struct State{B<:Basis, V<:AbstractVector{T}} <: State
+struct State{B<:Basis, V<:AbstractVector{T}} <: AbstractState
     vec::V
 end
 const VecState{B, T} = State{B, Vector{T}}
@@ -12,7 +12,22 @@ end
 State{V}(x::B) where {B, V} = State{B, V}(x)
 
 for op in (:+, :-, :*, :/, :\)
-    @eval Base.$op(a::S, b) where S<:State = S($op(a.vec, b))
-    @eval Base.$op(a, b::S) where S<:State = S($op(a, b.vec))
-    @eval Base.$op(a::S, b::S) where S<:State = S($op(a.vec, b.vec))
+    @eval function Base.$op(a::State{B}, b) where B
+        ret = $op(a.vec, b)
+        State{B, typeof(ret)}(ret)
+    end
+    @eval function Base.$op(a, b::State{B}) where B
+        ret = $op(a, b.vec)
+        State{B, typeof(ret)}(ret)
+    end
+    @eval function Base.$op(a::S1, b::S2) where {B, S1<:State{B}, S2<:State{B}}
+        ret = $op(a.vec, b.vec)
+        State{B, typeof(ret)}(ret)
+    end
 end
+
+for op in (:+, :-)
+    @eval Base.$op(a::State) = typeof(a)($op(a.vec))
+end
+
+overlap(a::S, b::S) where {B, S<:State{B}} = a.vec'b.vec
