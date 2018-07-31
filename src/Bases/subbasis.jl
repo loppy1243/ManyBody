@@ -7,6 +7,10 @@ struct SubBasis{B<:Basis, T} <: Basis
     state::B
 end
 
+Base.convert(::Type{B}, x::SubBasis{B}) where B = x.state
+Base.convert(::Type{C}, x::SubBasis{B}) where {C, B<:C} = x.state
+Base.convert(::Type{SB}, x::B) where SB<:SubBasis{B} = SB(x)
+
 Base.:(==)(x::SB, y::SB) where SB<:SubBasis = x.state == y.state
 Base.in(p::SP, s::SubBasis{PartHole{R}}) where {SP, R<:RefState{SP}} = p in s.state
 
