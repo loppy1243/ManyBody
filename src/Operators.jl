@@ -211,7 +211,7 @@ function (a::RaiseLowerOps)(X::MBSubBasis{Bases.PartHole{R}}) where R
         =# || a[i] isa RaiseOp && isocc(R, a[i].state) #=
         =# || a[i] isa LowerOp && ~isocc(R, a[i].state)
 
-            return ZeroState
+            return zero(CVecState{typeof(X)})
         elseif 0 != (x = findfirst(states, a[i].state))
             if a[i] isa RaiseOp
                 rmhole!(Y, a[i].state)
@@ -236,6 +236,7 @@ function (a::RaiseLowerOps)(X::MBSubBasis{Bases.PartHole{R}}) where R
         end
     end
 
+    Y = convert(typeof(X), Y)
     sgn*CVecState(Y)
 end
 
