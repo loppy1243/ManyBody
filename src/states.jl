@@ -1,4 +1,4 @@
-struct State{B<:Basis, V<:AbstractVector{T}}
+struct State{B<:Basis, V<:AbstractVector{T}} <: State
     vec::V
 end
 const VecState{B, T} = State{B, Vector{T}}
