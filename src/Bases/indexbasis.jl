@@ -1,9 +1,9 @@
 export indexes
 
-struct Index{SP<:SPBasis} <: SPBasis
+struct Index{B<:Basis} <: Basis
     index::Int
 end
-Index(s::SPBasis) = Index{typeof(s)}(index(s))
+Index(s::Basis) = Index{typeof(s)}(index(s))
 
 indexes(::Type{B}) where B<:Basis = map(Index{B}, indices(B))
 
@@ -16,4 +16,4 @@ Base.convert(::Type{Index{B}}, s::B) where B = Index{B}(index(s))
 Base.convert(::Type{Index}, s::Basis) = Index{typeof(s)}(index(s))
 Base.convert(::Type{B}, s::Index{B}) where B<:Basis = B(s)
 
-SP(s::Index{SP}) where SP<:SPBasis = SP[s.index]
+B(s::Index{B}) where B<:Basis = B[s.index]

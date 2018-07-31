@@ -26,8 +26,8 @@ PartHole{R}(phs::Vararg{Tuple{SP, SP}}) where {SP, R<:RefState{SP}} = PartHole{R
 Base.:(==)(s1::MB, s2::MB) where MB<:PartHole =
     s1.parts == s2.parts && s1.holes == s2.holes
 
-function Base.in(p::SP, s::PartHole{R}) where R<:RefState{SP}
-end
+Base.in(p::SP, s::PartHole{R}) where {SP, R<:RefState{SP}} =
+    ispart(R, p) ? s.parts[pindex(R, p)] : !s.holes[hindex(R, p)]
 
 function index(s::PartHole)
     bs = [s.holes; s.parts]

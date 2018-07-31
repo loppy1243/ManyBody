@@ -1,68 +1,86 @@
 @reexport module Operators
 export Operator, tabulate, refop, RaiseOp, LowerOp, RaiseLowerOps, A, refop, contract,
-       set_default_basis!, set_default_refstate!, @default_basis!, @Operator, @OperatorNBody
+       set_default_basis!, @default_basis!, @Operator#, @OperatorNBody
 using Combinatorics: permutations, levicivita
 using Loppy.Util: cartesian_pow
 using ..Bases
 using ..Bases: Index
 
-abstract type Operator{B<:Basis, Rep} end
+#abstract type Operator{B<:Basis, Rep} end
+#
+#OperatorNBody_sym(N::Int) = Symbol("Operator$(N)Body")
+#macro OperatorNBody(N::Int)
+#    esc(OperatorNBody_sym(N))
+#end
+#
+#macro def_OperatorNBody(N::Int)
+#    _def_OperatorNBody(N, OperatorNBody_sym(N))
+#end
+#macro def_OperatorNBody(N::Int, sym::Symbol)
+#    _def_OperatorNBody(N, sym)
+#end
+#function _def_OperatorNBody(N::Int, sym::Symbol)
+#    ty_sym = esc(sym)
+#
+#    Basis_sym = esc(gensym("B"))
+#
+#    sp_syms = [Symbol("sp$i") for i = 1:2N]
+#    sp_sym_nums = map(x -> :(index($x)), sp_syms)
+#    sp_args = map(x -> :($x::$Basis_sym), sp_syms)
+#    sp_sub_args = map(x -> :($x::SubBasis{$Basis_sym}), sp_syms)
+#
+#    quote
+#        struct $ty_sym{B<:Basis, Rep} <: Operator{B, Rep}
+#            op::Rep
+#        end
+#
+#        Operators.nbodies(::Type{<:$ty_sym}) = $N
+#        (op::$ty_sym{$Basis_sym})($(sp_sub_args...)) where $Basis_sym =
+#            op($(map(x -> :($x.state), sp_syms)))
+#        (op::$ty_sym{$Basis_sym, <:Function})($(sp_args...)) where $Basis_sym =
+#            op.op($(sp_syms...))
+#        (op::$ty_sym{$Basis_sym, <:AbstractArray{T, $(2N)}})($(sp_args...)) where
+#                {$Basis_sym, T} =
+#            op.op[$(sp_sym_nums...)]
+#    end
+#end
+#nbodies() = MethodError(nbodies, ()) |> throw
 
-OperatorNBody_sym(N::Int) = Symbol("Operator$(N)Body")
-macro OperatorNBody(N::Int)
-    esc(OperatorNBody_sym(N))
+
+const SBasis{B<:Basis} = Union{B, <:SubBasis{B}}
+
+struct Operator{N, B<:Basis, Op}
+    op::Op
 end
+@generated (op::Operator{N, B, Op})(args::Vararg{<:SBasis{B}, N2}) where {N, N2, B, Op} =
+    :(applyop(Val{$(2N)}, op, $((:(args[$i]) for i=1:N2)...)))
+@generated applyop(::Type{Val{N2}}, op::Operator{N, B, <:Function},
+                   sps::Vararg{<:SBasis{B}, N2}) where {N, N2, B} =
+    :(op.op($((sps[i] !== B && sps[i] <: SubBasis ? :(sps[$i].state) : :(sps[$i])
+               for i = 1:N2)...)))
+@generated applyop(::Type{Val{N2}}, op::Operator{N, B, <:AbstractArray{T, N2}},
+                   sps::Vararg{Union{B, SB}, N2}) where {N, N2, B, T, SB<:SubBasis{B}} =
+    :(op.op[$((sps[i] !== B && <: SubBasis ? :(index(sps[$i].state)) : :(index(sps[$i]))
+               for i = 1:N2)...)])
 
-macro def_OperatorNBody(N::Int)
-    _def_OperatorNBody(N, OperatorNBody_sym(N))
-end
-macro def_OperatorNBody(N::Int, sym::Symbol)
-    _def_OperatorNBody(N, sym)
-end
-function _def_OperatorNBody(N::Int, sym::Symbol)
-    ty_sym = esc(sym)
 
-    Basis_sym = esc(gensym("B"))
+#for i = 1:3
+#    @eval @def_OperatorNBody $i
+#    @eval export $(OperatorNBody_sym(i))
+#end
 
-    sp_syms = [Symbol("sp$i") for i = 1:2N]
-    sp_sym_nums = map(x -> :(index($x)), sp_syms)
-    sp_args = map(x -> :($x::$Basis_sym), sp_syms)
-    sp_sub_args = map(x -> :($x::SubBasis{$Basis_sym}), sp_syms)
-
-    quote
-        struct $ty_sym{B<:Basis, Rep} <: Operator{B, Rep}
-            op::Rep
-        end
-
-        Operators.nbodies(::Type{<:$ty_sym}) = $N
-        (op::$ty_sym{$Basis_sym})($(sp_sub_args...)) where $Basis_sym =
-            op($(map(x -> :($x.state), sp_syms)))
-        (op::$ty_sym{$Basis_sym, <:Function})($(sp_args...)) where $Basis_sym =
-            op.op($(sp_syms...))
-        (op::$ty_sym{$Basis_sym, <:AbstractArray{T, $(2N)}})($(sp_args...)) where
-                {$Basis_sym, T} =
-            op.op[$(sp_sym_nums...)]
-    end
-end
-nbodies() = MethodError(nbodies, ()) |> throw
-
-for i = 1:3
-    @eval @def_OperatorNBody $i
-    @eval export $(OperatorNBody_sym(i))
-end
-
+nbodies(::Type{<:Operator{N}}) where N = N
 nbodies(op::Operator) = nbodies(typeof(op))
 
-tabulate(op::Operator) = tabulate(Complex64, op)
-tabulate(op::Operator{<:Index, <:AbstractArray}) = op
-function tabulate(::Type{T}, op::Operator{B, Op}) where {T, B, Op}
-    n = 2nbodies(typeof(op))
-    mat = Array{T}(fill(dim(B), n)...)
-    for ss in cartesian_pow(B, n)
+tabulate(op) = tabulate(Complex64, op)
+tabulate(op::Operator{N, <:Index, <:AbstractArray}) where N = op
+function tabulate(::Type{T}, op::Operator{N, B, Op}) where {T, N, B, Op}
+    mat = Array{T}(fill(dim(B), 2N)...)
+    for ss in cartesian_pow(B, 2N)
         mat[CartesianIndex(map(index, ss))] = op(ss...)
     end
 
-    Operator{Index{B}, typeof(mat)}(mat)
+    Operator{N, Index{B}, typeof(mat)}(mat)
 end
 
 struct Raised{T}; val::T end
@@ -154,13 +172,14 @@ contract(::Type{Bases.PartHole{R}}, a1::LowerOp{SP}, a2::RaiseOp{SP}) where
         {SP, R<:RefState{SP}} =
     a1.state == a2.state ? ~isocc(R, a1.state) : 0
 contract(::Type, a::RLOp) = 0
+
 function contract(MB::Type, a::RaiseLowerOps)
     numops = n_ops(a)
     isodd(numops) && return 0
 
     sum(permutations(1:numops)) do perm
         prod(1:div(numops, 2)) do k
-            levicivita(perm)*contract(MB, a.ops[perm[2k-1]], a.ops[perm[2k]])
+            levicivita(perm)*contract(MB, ops[perm[2k-1]], ops[perm[2k]])
         end
     end
 end
@@ -213,7 +232,7 @@ macro Operator(expr::Expr, basis)
 
     quote
         x = $(esc(expr))
-        @OperatorNBody($nbodies){$(esc(basis)), typeof(x)}(x)
+        Operator{$nbodies, $(esc(basis)), typeof(x)}(x)
     end
 end
 

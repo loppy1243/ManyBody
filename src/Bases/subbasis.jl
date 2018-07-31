@@ -8,6 +8,7 @@ struct SubBasis{B<:Basis, T} <: Basis
 end
 
 Base.:(==)(x::SB, y::SB) where SB<:SubBasis = x.state == y.state
+Base.in(p::SP, s::SubBasis{PartHole{R}}) where {SP, R<:RefState{SP}} = p in s.state
 
 dim(::Type{SB}) where SB<:SubBasis = length(subindices(SB))
 index(x::SubBasis) = findfirst(basis(typeof(x)), x)

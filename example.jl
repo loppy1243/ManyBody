@@ -1,4 +1,4 @@
-module Exec
+@everywhere module Exec
 
 include("src/ManyBody.jl")
 
@@ -16,9 +16,7 @@ const MBBASIS = Bases.PHPaired{2, 4}
 const f_mb = @Operator(MBBASIS) do X, Y
     println("f: ", (index(X), index(Y)))
     sum(SPBASIS) do p
-        if X == Y && p in X
-            LEVEL_SPACING*(level(p)-1)
-        end
+        (X == Y && p in X)*LEVEL_SPACING*(level(p)-1)
     end
 end
 
@@ -32,15 +30,16 @@ V_sp(g) = @Operator(SPBASIS) do p, q, r, s
 end
 
 function V_mb(g)
-    V = V_sp(g)
+#    V = V_sp(g)
     @Operator(MBBASIS) do X, Y
         println("V: ", (index(X), index(Y)))
+
         sum(cartesian_pow(SPBASIS, Val{2})) do I
             p, r = I
             q = flipspin(p)
             s = flipspin(r)
 
-            V(p, q, r, s)*A(p', q', s, r)(X, Y)
+            -g/2*A(p', q', s, r)(X, Y)
         end
     end
 end
