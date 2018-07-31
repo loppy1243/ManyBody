@@ -29,7 +29,7 @@ Base.:(==)(b1::Bra{SP}, b2::Bra{SP}) where SP = b1.state == b2.state
 Base.ctranspose(s::AbstractState) = Bra(s)
 Base.:*(bra::Bra, ket::AbstractState) = overlap(bra.state, ket)
 
-overlap(a::, b::B) where B<:Basis = a == b
+overlap(a::B, b::B) where B<:Basis = a == b
 
 include("indexbasis.jl")
 include("pairing.jl")
