@@ -3,12 +3,13 @@ using Suppressor: @suppress_err
 
 struct State{B<:Basis, V<:AbstractVector} <: AbstractState
     vec::V
+    State{B, V}(vec::V) where {B, V} = new(vec)
 end
 const VecState{B, T} = State{B, Vector{T}}
 const CVecState{B} = VecState{B, Complex64}
 
 function State{B, V}(x::B) where {B, V}
-    v = zeros(dim(B))
+    v = zero(V(dim(B)))
     v[index(x)] = oneunit(eltype(V))
     State{B, V}(v)
 end
