@@ -1,4 +1,5 @@
 export State, VecState, CVecState
+using Suppressor: @suppress_err
 
 struct State{B<:Basis, V<:AbstractVector} <: AbstractState
     vec::V
@@ -18,7 +19,7 @@ dim(x::State) = length(x.vec)
 const BasisOrState{B, V} = Union{B, State{B, V}}
 
 # Add type arg
-Base.vec(x::BasisOrState{B, V}) where {B, V} = convert(State{B}, x).vec
+@suppress_err Base.vec(x::BasisOrState{B, V}) where {B, V} = convert(State{B}, x).vec
 
 Base.zero(::Type{State{B, V}}) where {B, V} = State{B, V}(zero(V(dim(B))))
 Base.zero(x::State) = typeof(x)(zero(x.vec))
@@ -40,7 +41,7 @@ function Base.convert(::Type{B}, x::State{B}) where B
     B[i]
 end
 
-for op in (:+, :-, :*, :/, :\)
+@suppress_err for op in (:+, :-, :*, :/, :\)
     @eval begin
         function Base.$op(a::BasisOrState{B}, b) where B
             a = convert(State{B}, a)
@@ -61,8 +62,8 @@ for op in (:+, :-, :*, :/, :\)
     end
 end
 
-Base.:+(a::BasisOrState) = a
-for op in (:-, :conj)
+@suppress_err Base.:+(a::BasisOrState) = a
+@suppress_err for op in (:-, :conj)
     @eval function Base.$op(a::BasisOrState{B}) where B
         a = convert(State{B}, a)
         ret = $op(a.vec)
