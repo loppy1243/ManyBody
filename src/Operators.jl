@@ -179,7 +179,7 @@ function contract(MB::Type, a::RaiseLowerOps)
 
     sum(permutations(1:numops)) do perm
         prod(1:div(numops, 2)) do k
-            levicivita(perm)*contract(MB, ops[perm[2k-1]], ops[perm[2k]])
+            levicivita(perm)*contract(MB, a.ops[perm[2k-1]], a.ops[perm[2k]])
         end
     end
 end
@@ -196,13 +196,16 @@ function (a::RaiseLowerOps)(X::MBSubBasis{MB}, Y::MBSubBasis{MB}) where MB<:MBBa
 end
 
 function (a::RaiseLowerOps)(X::MBSubBasis{Bases.PartHole{R}}) where R
-    Y = convert(Bases.PartHole, X)
+    Y = deepcopy(convert(Bases.PartHole, X))
+    B = typeof(Y)
 
     a = a.ops
     b = refop(X).ops
     states = map(c -> c.state, b)
+    ixs = map(index, states)
     p = sortperm(ixs)
     ixs = ixs[p]
+    states = states[p]
     b = b[p]
     sgn = levicivita(p)
 
@@ -220,6 +223,7 @@ function (a::RaiseLowerOps)(X::MBSubBasis{Bases.PartHole{R}}) where R
             end
 
             sgn *= 1 - 2((x-1)%2)
+            deleteat!(ixs, x)
             deleteat!(states, x)
             deleteat!(b, x)
         else
@@ -229,10 +233,12 @@ function (a::RaiseLowerOps)(X::MBSubBasis{Bases.PartHole{R}}) where R
                 addhole!(Y, a[i].state)
             end
 
-            x = searchsorted(states, a[i].state)
+            j = index(a[i].state)
+            x = searchsortedfirst(ixs, j)
             sgn *= 1 - 2((x-1)%2)
-            insert!(states, x)
-            insert!(b, RaiseOp(x))
+            insert!(ixs, x, j)
+            insert!(states, x, a[i].state)
+            insert!(b, x, RaiseOp(a[i].state))
         end
     end
 
