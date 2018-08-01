@@ -1,12 +1,12 @@
 @reexport module Bases
 export RefStates, AbstractState, Basis, SPBasis, RefState, MBBasis, Bra, overlap
 # Basis interface
-export index, indexbasis, dim #, Base.indices
+export basis, index, indexbasis, dim #, Base.indices
 
 using Reexport: @reexport
 
 abstract type AbstractState end
-abstract type Basis <: State end
+abstract type Basis <: AbstractState end
 abstract type SPBasis <: Basis end
 abstract type MBBasis <: Basis end
 
@@ -15,12 +15,16 @@ Base.:(==)(x::B, y::B) where B<:Basis = index(x) == index(y)
 
 Base.getindex(::Type{B}, ixs...) where B<:Basis = indexbasis(B, ixs...)
 Base.getindex(::Type{B}, ixs::Array) where B<:Basis = map(i -> indexbasis(B, i), ixs)
+Base.getindex(::Type{B}, r::Range{Int}) where B<:Basis = map(i -> indexbasis(B, i), r)
 
 Base.start(::Type{B}) where B<:Basis = start(basis(B))
 Base.next(::Type{B}, st) where B<:Basis = next(basis(B), st)
 Base.done(::Type{B}, st) where B<:Basis = done(basis(B), st)
 
+Base.endof(::Type{B}) where B<:Basis = dim(B)
+
 Base.indices(::Type{B}) where B<:Basis = 1:dim(B)
+basis(::Type{B}) where B<:Basis = map(x -> B[x], indices(B))
 
 struct Bra{S<:AbstractState}; state::S end
 
