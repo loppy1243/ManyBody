@@ -31,6 +31,6 @@ level(sp::Pairing) = sp.level
 spin(sp::Pairing) = sp.spin
 
 basis(::Type{Pairing{L}}) where L =
-    [Pairing{L}(l, s) for l = 1:L, s in SPINS]
+    [Pairing{L}(l, s) for l = 1:L for s in SPINS]
 
 dim(::Type{Pairing{L}}) where L = 2L
