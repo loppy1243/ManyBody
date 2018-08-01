@@ -58,19 +58,19 @@ dim(::Type{PartHole{R}}) where R = sum(0:n_occ(R)) do i
     binomial(n_occ(R), i)*binomial(n_unocc(R), i)
 end
 
-function addpart!(s::PartHole{R}, p::SP) where R<:RefState{SP}
+function addpart!(s::PartHole{R}, p::SP) where {SP, R<:RefState{SP}}
     ispart(R, p) && (s.parts[pindex(R, p)] = true)
     s
 end
-function addhole!(s::PartHole{R}, p::SP) where R<:RefState{SP}
+function addhole!(s::PartHole{R}, p::SP) where {SP, R<:RefState{SP}}
     ishole(R, p) && (s.holes[hindex(R, p)] = true)
     s
 end
-function rmpart!(s::PartHole{R}, p::SP) where R
+function rmpart!(s::PartHole{R}, p::SP) where {SP, R<:RefState{SP}}
     ispart(R, p) && (s.part[pindex(R, p)] = false)
     s
 end
-function rmhole!(s::PartHole{R}, p::SP) where R
+function rmhole!(s::PartHole{R}, p::SP) where {SP, R<:RefState{SP}}
     ishole(R, p) && (s.part[hindex(R, p)] = false)
     s
 end
