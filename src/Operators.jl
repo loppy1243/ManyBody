@@ -219,7 +219,7 @@ function (a::RaiseLowerOps)(X::MBSubBasis{Bases.PartHole{R}}) where R
                 rmpart!(Y, a[i].state)
             end
 
-            sgn *= (-1)^(x-1)
+            sgn *= 1 - 2((x-1)%2)
             deleteat!(states, x)
             deleteat!(b, x)
         else
@@ -230,7 +230,7 @@ function (a::RaiseLowerOps)(X::MBSubBasis{Bases.PartHole{R}}) where R
             end
 
             x = searchsorted(states, a[i].state)
-            sgn *= (-1)^(x-1)
+            sgn *= 1 - 2((x-1)%2)
             insert!(states, x)
             insert!(b, RaiseOp(x))
         end
