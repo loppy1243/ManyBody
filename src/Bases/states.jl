@@ -1,6 +1,6 @@
 export State, VecState, CVecState
 
-struct State{B<:Basis, V<:AbstractVector{T}} <: AbstractState
+struct State{B<:Basis, V<:AbstractVector} <: AbstractState
     vec::V
 end
 const VecState{B, T} = State{B, Vector{T}}
@@ -15,16 +15,19 @@ State{B}(x) where B = CVecState{B}(x)
 
 dim(x::State) = length(x.vec)
 
+const BasisOrState{B, V} = Union{B, State{B, V}}
+
 # Add type arg
 Base.vec(x::BasisOrState{B, V}) where {B, V} = convert(State{B}, x).vec
 
 Base.zero(::Type{State{B, V}}) where {B, V} = State{B, V}(zero(V(dim(B))))
 Base.zero(x::State) = typeof(x)(zero(x.vec))
 
-Base.convert(::Type{State{B, V1}}, x::State{B, V2}) = State{B, V1}(convert(V1, x.vec))
+Base.convert(::Type{State{B, V1}}, x::State{B, V2}) where {B, V1, V2} =
+    State{B, V1}(convert(V1, x.vec))
 Base.convert(::Type{A}, x::B) where {B, A<:State{B}} = A(x)
-Base.convert(::Type{State{B}}, x::State{B}) = x
-function Base.convert(::Type{B}, x::State{B})
+Base.convert(::Type{State{B}}, x::State{B}) where B = x
+function Base.convert(::Type{B}, x::State{B}) where B
     T = eltype(x.vec)
     nzs = x.vec .!= zero(T)
     i = findfirst(nzs)
@@ -37,7 +40,6 @@ function Base.convert(::Type{B}, x::State{B})
     B[i]
 end
 
-const BasisOrState{B, V} = Union{B, State{B, V}}
 for op in (:+, :-, :*, :/, :\)
     @eval begin
         function Base.$op(a::BasisOrState{B}, b) where B
