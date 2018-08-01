@@ -7,16 +7,35 @@ function normordtest()
     s = SPBASIS(4, SPINDOWN)
     a = A(p', r, s', q')
 
-    sgn, Na = normord(a)
-    println("Input:")
-    map(x -> print(x.state, " "), a.ops)
-    println()
-    println("Want:")
-    println("$s $q $p $r")
-    println("Normal ordered:")
-    map(x -> print(x.state, " "), Na.ops)
-    println()
-    println()
-    @test Na == A(s', q', p', r)
-    @test sgn == 1
-end; end
+    @testset "Vacuum" begin
+        println("Vacuum")
+        sgn, Na = normord(a)
+        println("Input:")
+        print("+ "); map(x -> print(x.state, " "), a.ops)
+        println()
+        println("Want:")
+        println("+ $s $q $p $r")
+        println("Normal ordered:")
+        print(sgn > 0 ? "+ " : "- "); map(x -> print(x.state, " "), Na.ops)
+        println()
+        println()
+        @test Na == A(s', q', p', r)
+        @test sgn == 1
+    end
+
+    @testset "Fermi{2}" begin
+        println("Fermi{2}")
+        sgn, Na = normord(RefStates.Fermi{2, SPBASIS}, a)
+        println("Input:")
+        print("+ "); map(x -> print(x.state, " "), a.ops)
+        println()
+        println("Want:")
+        println("- $s $p $q $r")
+        println("Normal ordered:")
+        print(sgn > 0 ? "+ " : "- "); map(x -> print(x.state, " "), Na.ops)
+        println()
+        println()
+        @test Na == A(s', p', q', r)
+        @test sgn == -1
+    end
+end; nothing end

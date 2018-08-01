@@ -34,3 +34,25 @@ basis(::Type{Pairing{L}}) where L =
     [Pairing{L}(l, s) for l = 1:L for s in SPINS]
 
 dim(::Type{Pairing{L}}) where L = 2L
+
+Base.show(io::IO, x::Pairing) = print(io, level(x), spinup(spin(x)) ? "↑" : "↓")
+function Base.show(io::IO, ::MIME"text/plain", x::Pairing{L}) where L
+    for i = L:-1:1
+        print(io, lpad(i, ndigits(L)), "|  ")
+        if i == level(x)
+            if spindown(spin(x))
+                print(io, "↓  ")
+            else
+                print(io, "o  ")
+            end
+
+            if spinup(spin(x))
+                println(io, "↑")
+            else
+                println(io, "o")
+            end
+        else
+            println(io, "o  o")
+        end
+    end
+end

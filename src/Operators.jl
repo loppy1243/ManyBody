@@ -1,6 +1,6 @@
 @reexport module Operators
 export Operator, tabulate, refop, RaiseOp, LowerOp, RaiseLowerOps, A, refop, contract,
-       set_default_basis!, @default_basis!, @Operator#, @OperatorNBody
+       normord, set_default_basis!, @default_basis!, @Operator#, @OperatorNBody
 using Combinatorics: permutations, levicivita
 using Loppy.Util: cartesian_pow
 using ..Bases
@@ -95,6 +95,11 @@ const RLOp{SP} = Union{RaiseOp{SP}, LowerOp{SP}}
 struct RaiseLowerOps{SP<:SPBasis}
     ops::Vector{RLOp{SP}}
 end
+
+Base.:(==)(::RLOp, RLOp) = false
+Base.:(==)(a::R, b::R) where R<:RLOp = a.state == b.state
+Base.:(==)(::RaiseLowerOps, ::RaiseLowerOps) = false
+Base.:(==)(a::R, b::R) where R<:RaiseLowerOps = a.ops == b.ops
 
 Base.convert(::Type{RaiseLowerOps{SP}}, a::RLOp{SP}) where SP = RaiseLowerOps{SP}([a])
 Base.convert(::Type{RaiseLowerOps}, a::RLOp{SP}) where SP = RaiseLowerOps{SP}([a])
@@ -195,55 +200,53 @@ function (a::RaiseLowerOps)(X::MBSubBasis{MB}, Y::MBSubBasis{MB}) where MB<:MBBa
     contract(MB, bra_rl_op*a*ket_rl_op)
 end
 
-function (a::RaiseLowerOps)(X::MBSubBasis{Bases.PartHole{R}}) where R
-    Y = deepcopy(convert(Bases.PartHole, X))
-    B = typeof(Y)
-
-    a = a.ops
-    b = refop(X).ops
-    states = map(c -> c.state, b)
-    ixs = map(index, states)
-    p = sortperm(ixs)
-    ixs = ixs[p]
-    states = states[p]
-    b = b[p]
-    sgn = levicivita(p)
-
-    for i in length(a):-1:1
-        if a[i] in b #=
-        =# || a[i] isa RaiseOp && isocc(R, a[i].state) #=
-        =# || a[i] isa LowerOp && ~isocc(R, a[i].state)
-
-            return zero(CVecState{typeof(X)})
-        elseif 0 != (x = findfirst(states, a[i].state))
-            if a[i] isa RaiseOp
-                rmhole!(Y, a[i].state)
-            else
-                rmpart!(Y, a[i].state)
-            end
-
-            sgn *= 1 - 2((x-1)%2)
-            deleteat!(ixs, x)
-            deleteat!(states, x)
-            deleteat!(b, x)
+normord(a::RaiseLowerOps{SP}) where SP = normord(Vacuum{SP}, a)
+function normord(::Type{R}, a::RaiseLowerOps{SP}) where {SP, R<:RefState{SP}}
+    function comp(a, b)
+        if a[2] && b[2]
+            index(a[1]) >= index(b[1])
+        elseif !a[2] && !b[2]
+            index(a[1]) <= index(b[1])
         else
-            if a[i] isa RaiseOp
-                addpart!(Y, a[i].state)
-            else
-                addhole!(Y, a[i].state)
-            end
-
-            j = index(a[i].state)
-            x = searchsortedfirst(ixs, j)
-            sgn *= 1 - 2((x-1)%2)
-            insert!(ixs, x, j)
-            insert!(states, x, a[i].state)
-            insert!(b, x, RaiseOp(a[i].state))
+            a[2]
         end
     end
 
-    Y = convert(typeof(X), Y)
-    sgn*CVecState(Y)
+    xs = map(a.ops) do b
+        (b.state, if b isa RaiseOp
+            ispart(R, b.state)
+        else
+            ishole(R, b.state)
+        end)
+    end
+
+    p = sortperm(xs, lt=comp)
+    return (levicivita(p), NOrdRaiseLowerOps(a.ops[p]))
+end
+
+function apply_nord_rl(a::RaiseLowerOps, X::MBSubBasis{Bases.PartHole{R}}) where R
+    Y = deepcopy(convert(Bases.PartHole, X))
+    B = typeof(Y)
+
+    for i = length(a.ops):-1:1
+        if a.ops[i] isa RaiseOp
+            if a.ops[i].state in Y
+                return 0
+            elseif ispart(R, a.ops[i])
+                addpart!(Y, a.ops[i].state)
+            else
+                rmhole!(Y, a.ops[i].state)
+            end
+        else
+            if !(a.ops[i].state in Y)
+                return 0
+            elseif ispart(R, a.ops[i].state)
+                rmpart!(Y, a.ops[i].state)
+            else    
+                addhole!(Y, a.ops[i].state)
+            end
+        end
+    end
 end
 
 DEFAULT_BASIS = nothing

@@ -74,3 +74,6 @@ function rmhole!(s::PartHole{R}, p::SP) where {SP, R<:RefState{SP}}
     ishole(R, p) && (s.part[hindex(R, p)] = false)
     s
 end
+
+RefStates.nholes(s::PartHole) = count(s.holes)
+RefStates.nparts(s::PartHole) = count(s.parts)

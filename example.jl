@@ -16,7 +16,7 @@ const MBBASIS = Bases.PHPaired{2, 4}
 const f_mb = @Operator(MBBASIS) do X, Y
     println("f: ", (index(X), index(Y)))
     sum(SPBASIS) do p
-        (X == Y && p in X)*LEVEL_SPACING*(level(p)-1)
+        LEVEL_SPACING*(level(p)-1)*(X'A(p', p)(Y))
     end
 end
 
@@ -39,7 +39,7 @@ function V_mb(g)
             q = flipspin(p)
             s = flipspin(r)
 
-            -g/2*A(p', q', s, r)(X, Y)
+            -g/2*(X'A(p', q', s, r)(Y))
         end
     end
 end

@@ -1,5 +1,5 @@
 @reexport module SpinMod
-export Spin, SPINUP, SPINDOWN, SPINS, flip
+export Spin, SPINUP, SPINDOWN, SPINS, flip, spinup, spindown
 
 @enum Spin::Bool SPINUP=true SPINDOWN=false
 

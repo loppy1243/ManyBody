@@ -8,5 +8,5 @@ function basisindex()
         println("Testing basis: ", BASIS)
         @test length(b) == dim(BASIS)
         @test all(b[i] == BASIS[i] for i in indices(BASIS))
-    end end
-end
+    end
+end; end
