@@ -1,3 +1,5 @@
+export addpart!, addhole!, rmpart!, rmhole!
+
 struct PartHole{R<:RefState} <: MBBasis
     parts::BitVector
     holes::BitVector
