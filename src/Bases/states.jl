@@ -42,33 +42,51 @@ function Base.convert(::Type{B}, x::State{B}) where B
     B[i]
 end
 
-@suppress_err for op in (:+, :-, :*, :/, :\)
+@suppress_err for op in (:+, :-), T in (:(BasisOrState{B}), :(Bra{BasisOrState{B}}))
     @eval begin
-        function Base.$op(a::BasisOrState{B}, b) where B<:Basis
-            a = convert(State{B}, a)
-            ret = $op(a.vec, b)
-            State{B, typeof(ret)}(ret)
-        end
-        function Base.$op(a, b::BasisOrState{B}) where B<:Basis
-            b = convert(State{B}, b)
-            ret = $op(a, b.vec)
-            State{B, typeof(ret)}(ret)
-        end
-        function Base.$op(a::BasisOrState{B}, b::BasisOrState{B}) where B<:Basis
+        function Base.$op(a::$T, b::$T) where B<:Basis
             a = convert(State{B}, a)
             b = convert(State{B}, b)
             ret = $op(a.vec, b.vec)
+
             State{B, typeof(ret)}(ret)
         end
     end
 end
 
-@suppress_err Base.:+(a::BasisOrState) = a
-@suppress_err for op in (:-, :conj)
-    @eval function Base.$op(a::BasisOrState{B}) where B<:Basis
-        a = convert(State{B}, a)
-        ret = $op(a.vec)
-        State{B, typeof(ret)}(ret)
+@suppress_err for T in (:(BasisOrState{B}), :(Bra{BasisOrState{B}}))
+    @eval begin
+        function Base.:*(x::Number, a::$T) where B<:Basis
+            a = convert(State{B}, a)
+            ret = a*vec(a)
+        
+            State{B, typeof(ret)}(ret)
+        end
+        function Base.:*(a::$T, x::Number) where B<:Basis
+            a = convert(State{B}, a)
+            ret = vec(a)*x
+        
+            State{B, typeof(ret)}(ret)
+        end
+        function Base.:/(a::$T, x::Number) where B<:Basis
+            a = convert(State{B}, a)
+            ret = vec(a)/x
+        
+            State{B, typeof(ret)}(ret)
+        end
+        function Base.:\(x::Number, a::$T) where B<:Basis
+            a = convert(State{B}, a)
+            ret = x \ vec(a)
+        
+            State{B, typeof(ret)}(ret)
+        end
+        Base.:+(a::$T) where B<:Basis = a
+
+        function Base.:-(a::$T) where B<:Basis
+            a = convert(State{B}, a)
+            ret = -a.vec
+            State{B, typeof(ret)}(ret)
+        end
     end
 end
 
@@ -76,3 +94,5 @@ function overlap(a::BasisOrState{B}, b::BasisOrState{B}) where B<:Basis
     a = convert(State{B}, a)
     a.vec'b.vec
 end
+overlap(a::BasisOrState{B}, b::SubBasis{B}) where B<:Basis = overlap(a, convert(B, b))
+overlap(a::SubBasis{B}, b::BasisOrState{B}) where B<:Basis = overlap(convert(B, a), b)

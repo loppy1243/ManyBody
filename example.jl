@@ -1,4 +1,4 @@
-@everywhere module Exec
+module Exec
 
 include("src/ManyBody.jl")
 
@@ -13,44 +13,45 @@ const MBBASIS = Bases.PHPaired{2, 4}
 #const PARTS = parts(REFSTATE)
 #const HOLES = holes(REFSTATE)
 
-const f_mb = @Operator(MBBASIS) do X, Y
-    println("f: ", (index(X), index(Y)))
+E0(g) = sum(SPBASIS) do p
+    isocc(REFSTATE, p)*(LEVEL_SPACING*(level(p)-1) - g/2)
+end
+
+f(g) = @Operator(MBBASIS) do X, Y
     sum(SPBASIS) do p
-        LEVEL_SPACING*(level(p)-1)*(X'A(p', p)(Y))
+        sgn1, NA = normord(REFSTATE, A(p', p))
+        sgn2, Y2 = apply_normord_rl(NA, Y)
+        (LEVEL_SPACING*(level(p)-1) - g*isocc(REFSTATE, p))*sgn1*sgn2*(X'Y2)
     end
 end
 
-V_sp(g) = @Operator(SPBASIS) do p, q, r, s
-    if level(p) == level(q) && level(r) == level(s) #=
-    =# && spin(p) != spin(q) && spin(r) != spin(s)
-        spin(p) == spin(r) ? -g/2 : g/2
-    else
-        0
-    end
-end
+#V_sp(g) = @Operator(SPBASIS) do p, q, r, s
+#    if level(p) == level(q) && level(r) == level(s) #=
+#    =# && spin(p) != spin(q) && spin(r) != spin(s)
+#        spin(p) == spin(r) ? -g/2 : g/2
+#    else
+#        0
+#    end
+#end
 
-function V_mb(g)
-#    V = V_sp(g)
-    @Operator(MBBASIS) do X, Y
-        println("V: ", (index(X), index(Y)))
+V(g) = @Operator(MBBASIS) do X, Y
+    sum(cartesian_pow(SPBASIS, Val{2})) do I
+        p, r = I
+        q = flipspin(p)
+        s = flipspin(r)
+        sgn1, NA = normord(REFSTATE, A(p', q', s, r))
+        sgn2, Y2 = apply_normord_rl(NA, Y)
 
-        sum(cartesian_pow(SPBASIS, Val{2})) do I
-            p, r = I
-            q = flipspin(p)
-            s = flipspin(r)
-
-            -g/2*(X'A(p', q', s, r)(Y))
-        end
+        -g/2*sgn1*sgn2*(X'Y2)
     end
 end
 
 H(g) = @Operator(MBBASIS) do X, Y
-    println("H: ", (index(X), index(Y)))
-    f_mb(X, Y) + V_mb(g)(X, Y)
+    (X'Y)*E0(g) + f(g)(X, Y) + V(g)(X, Y)
 end
 
 main() = tabulate(H(1.0))
 
 end # module Exec
 
-Exec.main()
+#Exec.main()

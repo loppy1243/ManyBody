@@ -228,10 +228,11 @@ function apply_normord_rl(a::RaiseLowerOps, X::MBSubBasis{Bases.PartHole{R}}) wh
     Y = deepcopy(convert(Bases.PartHole, X))
     B = typeof(Y)
 
+    sgn = 1
     for i = length(a.ops):-1:1
-        if a.ops[i] isa RaiseOp
+        sgn *= if a.ops[i] isa RaiseOp
             if a.ops[i].state in Y
-                return ZeroState()
+                return (0, ZeroState())
             elseif ispart(R, a.ops[i].state)
                 addpart!(Y, a.ops[i].state)
             else
@@ -239,7 +240,7 @@ function apply_normord_rl(a::RaiseLowerOps, X::MBSubBasis{Bases.PartHole{R}}) wh
             end
         else
             if !(a.ops[i].state in Y)
-                return ZeroState()
+                return (0, ZeroState())
             elseif ispart(R, a.ops[i].state)
                 rmpart!(Y, a.ops[i].state)
             else    
@@ -248,7 +249,7 @@ function apply_normord_rl(a::RaiseLowerOps, X::MBSubBasis{Bases.PartHole{R}}) wh
         end
     end
 
-    return Y
+    return (sgn, Y)
 end
 
 macro Operator(expr)

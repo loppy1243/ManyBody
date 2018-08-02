@@ -59,20 +59,28 @@ dim(::Type{PartHole{R}}) where R = sum(0:n_occ(R)) do i
 end
 
 function addpart!(s::PartHole{R}, p::SP) where {SP, R<:RefState{SP}}
-    ispart(R, p) && (s.parts[pindex(R, p)] = true)
-    s
+    i = pindex(R, p)
+    ispart(R, p) && (s.parts[i] = true)
+
+    1 - 2((count(.~s.holes) + count(s.parts[1:i])) % 2)
 end
 function addhole!(s::PartHole{R}, p::SP) where {SP, R<:RefState{SP}}
-    ishole(R, p) && (s.holes[hindex(R, p)] = true)
-    s
+    i = hindex(R, p)
+    ret = ishole(R, p) && (s.holes[i] = true)
+
+    1 - 2((count(.~s.holes[1:i])) % 2)
 end
 function rmpart!(s::PartHole{R}, p::SP) where {SP, R<:RefState{SP}}
-    ispart(R, p) && (s.part[pindex(R, p)] = false)
-    s
+    i = pindex(R, p)
+    ispart(R, p) && (s.parts[i] = false)
+
+    1 - 2((count(.~s.holes) + count(s.parts[1:i])) % 2)
 end
 function rmhole!(s::PartHole{R}, p::SP) where {SP, R<:RefState{SP}}
-    ishole(R, p) && (s.part[hindex(R, p)] = false)
-    s
+    i = hindex(R, p)
+    ishole(R, p) && (s.holes[i] = false)
+
+    1 - 2((count(.~s.holes[1:i])) % 2)
 end
 
 RefStates.nholes(s::PartHole) = count(s.holes)

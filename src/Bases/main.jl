@@ -47,4 +47,11 @@ include("mbbasis.jl")
 include("subbasis.jl")
 include("states.jl")
 
+function Base.show(io::IO, x::Union{PartHole{R}, <:SubBasis{PartHole{R}}}) where {SP, R<:RefState{SP}}
+    x = convert(PartHole{R}, x)
+    print(io, "Parts[", [string(indexp(R, i))*" " for (i, p) in enumerate(x.parts) if p]..., "]")
+    print(" ")
+    print(io, "Holes[", [string(indexh(R, i))*" " for (i, h) in enumerate(x.holes) if h]..., "]")
+end
+
 end # module States
