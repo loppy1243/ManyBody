@@ -1,6 +1,6 @@
 @reexport module Operators
 export Operator, tabulate, refop, RaiseOp, LowerOp, RaiseLowerOps, A, refop, contract,
-       normord, apply_normord_rl, set_default_basis!, @default_basis!, @Operator#, @OperatorNBody
+       normord, apply_normord_rl, @Operator#, @OperatorNBody
 using Combinatorics: permutations, levicivita
 using Loppy.Util: cartesian_pow
 using ..Bases
@@ -249,32 +249,6 @@ function apply_normord_rl(a::RaiseLowerOps, X::MBSubBasis{Bases.PartHole{R}}) wh
     end
 
     return Y
-end
-
-DEFAULT_BASIS = nothing
-DEFAULT_REFSTATE = nothing
-
-set_default_basis!(::Type{B}) where B<:Basis = global DEFAULT_BASIS = B
-
-macro default_basis!(sym::Symbol)
-    :(set_default_basis!($(esc(sym))))
-end
-macro default_basis!(expr::Expr)
-    if expr.head == :curly || expr.head == :.
-        return :(set_default_basis!($(esc(expr))))
-    end
-    @assert expr.head == :(=) && (expr.args[1] isa Symbol || expr.args[1].head != :call) #=
-         =# || expr.head == :const
-
-    is_const = expr.head == :const
-    name = is_const ? expr.args[1].args[1] : expr.args[1]
-
-    expr = is_const ? Expr(:const, expr) : expr
-
-    quote
-        $(esc(expr))
-        set_default_basis!($(esc(name)))
-    end
 end
 
 macro Operator(expr)
