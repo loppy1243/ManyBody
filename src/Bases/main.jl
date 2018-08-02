@@ -1,5 +1,5 @@
 @reexport module Bases
-export RefStates, AbstractState, Basis, SPBasis, RefState, MBBasis, Bra, overlap
+export RefStates, AbstractState, Basis, SPBasis, RefState, MBBasis, Bra, overlap, ZeroState
 # Basis interface
 export basis, index, indexbasis, dim #, Base.indices
 
@@ -9,6 +9,7 @@ abstract type AbstractState end
 abstract type Basis <: AbstractState end
 abstract type SPBasis <: Basis end
 abstract type MBBasis <: Basis end
+struct ZeroState <: AbstractState end
 
 Base.:(==)(x::Basis, y::Basis) = false
 Base.:(==)(x::B, y::B) where B<:Basis = index(x) == index(y)
@@ -28,12 +29,16 @@ basis(::Type{B}) where B<:Basis = map(x -> B[x], indices(B))
 
 struct Bra{S<:AbstractState}; state::S end
 
-Base.:(==)(::Bra, ::Bra) = false
 Base.:(==)(b1::Bra{SP}, b2::Bra{SP}) where SP = b1.state == b2.state
 Base.ctranspose(s::AbstractState) = Bra(s)
 Base.:*(bra::Bra, ket::AbstractState) = overlap(bra.state, ket)
+Base.:*(x::Number, a::ZeroState) = ZeroState()
+Base.:*(a::ZeroState, x::Number) = ZeroState()
 
 overlap(a::B, b::B) where B<:Basis = a == b
+overlap(a::ZeroState, b::S) where S<:AbstractState = 0
+overlap(a::S, b::ZeroState) where S<:AbstractState = 0
+overlap(a::ZeroState, b::ZeroState) = 0
 
 include("indexbasis.jl")
 include("pairing.jl")
