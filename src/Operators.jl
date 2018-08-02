@@ -231,15 +231,15 @@ function apply_normord_rl(a::RaiseLowerOps, X::MBSubBasis{Bases.PartHole{R}}) wh
     for i = length(a.ops):-1:1
         if a.ops[i] isa RaiseOp
             if a.ops[i].state in Y
-                return zero(CVecState{B})
-            elseif ispart(R, a.ops[i])
+                return ZeroState()
+            elseif ispart(R, a.ops[i].state)
                 addpart!(Y, a.ops[i].state)
             else
                 rmhole!(Y, a.ops[i].state)
             end
         else
             if !(a.ops[i].state in Y)
-                return zero(CVecState{B})
+                return ZeroState()
             elseif ispart(R, a.ops[i].state)
                 rmpart!(Y, a.ops[i].state)
             else    
