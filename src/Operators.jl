@@ -1,6 +1,6 @@
 @reexport module Operators
 export Operator, tabulate, refop, RaiseOp, LowerOp, RaiseLowerOps, A, refop, contract,
-       normord, set_default_basis!, @default_basis!, @Operator#, @OperatorNBody
+       normord, apply_normord_rl, set_default_basis!, @default_basis!, @Operator#, @OperatorNBody
 using Combinatorics: permutations, levicivita
 using Loppy.Util: cartesian_pow
 using ..Bases
@@ -224,7 +224,7 @@ function normord(::Type{R}, a::RaiseLowerOps{SP}) where {SP, R<:RefState{SP}}
     return (levicivita(p), NOrdRaiseLowerOps(a.ops[p]))
 end
 
-function apply_nord_rl(a::RaiseLowerOps, X::MBSubBasis{Bases.PartHole{R}}) where R
+function apply_normord_rl(a::RaiseLowerOps, X::MBSubBasis{Bases.PartHole{R}}) where R
     Y = deepcopy(convert(Bases.PartHole, X))
     B = typeof(Y)
 
