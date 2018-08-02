@@ -221,7 +221,7 @@ function normord(::Type{R}, a::RaiseLowerOps{SP}) where {SP, R<:RefState{SP}}
     end
 
     p = sortperm(xs, lt=comp)
-    return (levicivita(p), NOrdRaiseLowerOps(a.ops[p]))
+    return (levicivita(p), RaiseLowerOps(a.ops[p]))
 end
 
 function apply_normord_rl(a::RaiseLowerOps, X::MBSubBasis{Bases.PartHole{R}}) where R
@@ -231,7 +231,7 @@ function apply_normord_rl(a::RaiseLowerOps, X::MBSubBasis{Bases.PartHole{R}}) wh
     for i = length(a.ops):-1:1
         if a.ops[i] isa RaiseOp
             if a.ops[i].state in Y
-                return 0
+                return zero(CVecState{B})
             elseif ispart(R, a.ops[i])
                 addpart!(Y, a.ops[i].state)
             else
@@ -239,7 +239,7 @@ function apply_normord_rl(a::RaiseLowerOps, X::MBSubBasis{Bases.PartHole{R}}) wh
             end
         else
             if !(a.ops[i].state in Y)
-                return 0
+                return zero(CVecState{B})
             elseif ispart(R, a.ops[i].state)
                 rmpart!(Y, a.ops[i].state)
             else    
@@ -247,6 +247,8 @@ function apply_normord_rl(a::RaiseLowerOps, X::MBSubBasis{Bases.PartHole{R}}) wh
             end
         end
     end
+
+    return Y
 end
 
 DEFAULT_BASIS = nothing
