@@ -1,25 +1,25 @@
-export SubBasis, subindices, subindexes
+export subindices, subindexes
 using Combinatorics: combinations
 using Loppy.Util: cartesian_pow
 using ..SpinMod
 
-struct SubBasis{B<:Basis, T} <: Basis
+struct Sub{B<:AbstractBasis, T} <: AbstractBasis
     state::B
 end
+const MaybeSub{B<:AbstractBasis} = Union{B, <:Sub{B}}
 
-Base.convert(::Type{B}, x::SubBasis{B}) where B = x.state
-Base.convert(::Type{C}, x::SubBasis{B}) where {C, B<:C} = x.state
-Base.convert(::Type{SB}, x::B) where {B, SB<:SubBasis{B}} = SB(x)
+Base.convert(::Type{B}, x::Sub{B}) where B = x.state
+Base.convert(::Type{C}, x::Sub{B}) where {C, B<:C} = x.state
+Base.convert(::Type{SB}, x::B) where {B, SB<:Sub{B}} = SB(x)
 
-Base.:(==)(x::SB, y::SB) where SB<:SubBasis = x.state == y.state
-Base.in(p::SP, s::SubBasis{PartHole{R}}) where {SP, R<:RefState{SP}} = p in s.state
+Base.:(==)(x::SB, y::SB) where SB<:Sub = x.state == y.state
 
-dim(::Type{SB}) where SB<:SubBasis = length(subindices(SB))
-index(x::SubBasis) = findfirst(basis(typeof(x)), x)
-indexbasis(::Type{SB}, i) where {B, SB<:SubBasis{B}} = basis(SB)[i]
+dim(::Type{SB}) where SB<:Sub = length(subindices(SB))
+index(x::Sub) = findfirst(basis(typeof(x)), x)
+indexbasis(::Type{SB}, i) where {B, SB<:Sub{B}} = basis(SB)[i]
 
-subindices(::Type{B}) where B<:Basis = indices(B)
-subindexes(::Type{SB}) where SB<:SubBasis = map(Index{SB}, subindices(SB))
+subindices(::Type{B}) where B<:AbstractBasis = indices(B)
+subindexes(::Type{SB}) where SB<:Sub = map(Index{SB}, subindices(SB))
 
 macro defSubBasis(ty_expr::Expr, expr)
     @assert ty_expr.head == :(<:)
@@ -45,7 +45,7 @@ macro defSubBasis(ty_expr::Expr, expr)
 
     quote
         struct $subbasis_ty_esc end
-        const $new_ty_esc = SubBasis{$base_ty_esc, $subbasis_ty_esc}
+        const $new_ty_esc = Sub{$base_ty_esc, $subbasis_ty_esc}
 
         @generated $basis_expr = begin
             x = (() -> $(esc(expr)))()
@@ -55,25 +55,4 @@ macro defSubBasis(ty_expr::Expr, expr)
         end
         @generated $(subindices_expr(:T)) = map(index, basis(T.parameters[1]))
     end
-end
-
-@defSubBasis PHPaired{F, L} <: PartHole{Fermi{F, Pairing{L}}} begin
-    R = Fermi{F, Pairing{L}}
-    SP = Pairing{L}
-
-    ret = [PartHole{R}()]
-    for ph = 1:L-F
-        for lhs in combinations(1:F, ph), lps in combinations(F+1:L, ph)
-            pairs = map(lhs, lps) do lh, lp
-                [(SP(lp, SPINUP),   SP(lh, SPINUP)  ),
-                 (SP(lp, SPINDOWN), SP(lh, SPINDOWN)),
-                 (SP(lp, SPINUP),   SP(lh, SPINDOWN)),
-                 (SP(lp, SPINDOWN), SP(lh, SPINUP)  )]
-            end |> x -> reduce(vcat, x)
-
-            push!(ret, PartHole{R}(pairs))
-        end
-    end
-
-    ret
 end

@@ -2,7 +2,7 @@ export Pairing, level, nlevels, spin, flipspin
 import .RefStates
 using ..SpinMod
 
-struct Pairing{Levels} <: SPBasis
+struct Pairing{Levels} <: AbstractBasis
     level::Int
     spin::Spin
 

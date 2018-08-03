@@ -1,87 +1,57 @@
-export addpart!, addhole!, rmpart!, rmhole!
+struct Slater{B<:AbstractBasis} <: AbstractBasis
+    bits::BitVector
 
-struct PartHole{R<:RefState} <: MBBasis
-    parts::BitVector
-    holes::BitVector
+    Slater{B}(parts::BitVector) where B = new(parts)
+    function Slater{B}(parts) where B
+        bits = falses(dim(B))
 
-    PartHole{R}(parts, holes) where R = new(parts, holes)
-    function PartHole{R}(phs) where R
-        ps = falses(nparts(R))
-        hs = falses(nholes(R))
+        for p in parts
+            p = convert(B, p)
 
-        for (p, h) in phs
-            @assert ispart(R, p)
-            @assert ishole(R, h)
-
-            pn = pindex(R, p)
-            hn = hindex(R, h)
-
-            ps[pn] = true
-            hs[hn] = true
+            bits[index(p)] = true
         end
 
-        new(ps, hs)
+        new(bits)
     end
 end
-PartHole{R}(phs::Vararg{Tuple{SP, SP}}) where {SP, R<:RefState{SP}} = PartHole{R}(phs)
+Slater{B}(ps::B...) where B<:AbstractBasis = Slater{B}(phs)
+Slater(ps::B...) where B<:AbstractBasis = Slater{B}(phs)
 
-Base.:(==)(s1::MB, s2::MB) where MB<:PartHole =
-    s1.parts == s2.parts && s1.holes == s2.holes
+Base.:(==)(s1::MB, s2::MB) where MB<:Slater = s1.bits == s2.bits
+Base.in(p::B, s::Slater{B}) where B = s.bits[index(p)]
+Base.in(p::B, s::Sub{Slater{B}}) where B = p in s.state
 
-Base.in(p::SP, s::PartHole{R}) where {SP, R<:RefState{SP}} =
-    ispart(R, p) ? s.parts[pindex(R, p)] : !s.holes[hindex(R, p)]
-
-function index(s::PartHole)
-    bs = [s.holes; s.parts]
-
-    sum(bs[i]*2^(i-1) for i in indices(bs, 1))
-end
-
-function indexbasis(::Type{PartHole{R}}, ix::Int) where R
-    numhs = nholes(R)
-    numps = nparts(R)
-
-    holes = BitVector(numhs)
-    parts = BitVector(numps)
-
-    for i in 1:numhs
-        holes[i] = (ix & (1 << (i-1))) != 0
-    end
-    for i in 1:numps
-        parts[i] = (ix & (1 << (numhs + i - 1))) != 0
+index(s::Slate) = sum(s.bits[i]*2^(i-1) for i in indices(s.bits, 1))
+function indexbasis(::Type{Slater{B}}, ix::Int) where B 
+    d = dim(B)
+    states = falses(d)
+    for i in 1:d
+        states[i] = (ix & (1 << (i-1))) != 0
     end
 
-    PartHole{R}(parts, holes)
+    Slater{B}(states)
 end
 
-dim(::Type{PartHole{R}}) where R = sum(0:n_occ(R)) do i
-    binomial(n_occ(R), i)*binomial(n_unocc(R), i)
+dim(::Type{Slater{B}}) where B = 2^dim(B) - 1
+n_occ(s::Slater) = count(s.bits)
+n_unoc(s::Slater) = count(.~s.bits)
+
+function Base.insert!(s::Slater{B}, p::B) where B
+    i = index(p)
+    s.bits[i] = true
+
+    1 - 2(count(s.bits[1:i-1]) % 2)
+end
+function Base.delete!(s::Slater{B}, p::B) where B
+    i = index(p)
+    s.bits[i] = false
+
+    1 - 2((count(s.holes[1:i-1])) % 2)
 end
 
-function addpart!(s::PartHole{R}, p::SP) where {SP, R<:RefState{SP}}
-    i = pindex(R, p)
-    ispart(R, p) && (s.parts[i] = true)
-
-    1 - 2((count(.~s.holes) + count(s.parts[1:i])) % 2)
+function Base.show(io::IO, x::MaybeSub{Slater{B}}) where B
+    x = convert(Slater{B}, x)
+    print(io, "Slater($(dim(B)))[",
+              [string(B[i])*" " for (i, p) in enumerate(x.bits) if p]...,
+              "]")
 end
-function addhole!(s::PartHole{R}, p::SP) where {SP, R<:RefState{SP}}
-    i = hindex(R, p)
-    ret = ishole(R, p) && (s.holes[i] = true)
-
-    1 - 2((count(.~s.holes[1:i])) % 2)
-end
-function rmpart!(s::PartHole{R}, p::SP) where {SP, R<:RefState{SP}}
-    i = pindex(R, p)
-    ispart(R, p) && (s.parts[i] = false)
-
-    1 - 2((count(.~s.holes) + count(s.parts[1:i])) % 2)
-end
-function rmhole!(s::PartHole{R}, p::SP) where {SP, R<:RefState{SP}}
-    i = hindex(R, p)
-    ishole(R, p) && (s.holes[i] = false)
-
-    1 - 2((count(.~s.holes[1:i])) % 2)
-end
-
-RefStates.nholes(s::PartHole) = count(s.holes)
-RefStates.nparts(s::PartHole) = count(s.parts)
