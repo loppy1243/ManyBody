@@ -14,14 +14,14 @@ struct Slater{B<:AbstractBasis} <: AbstractBasis
         new(bits)
     end
 end
-Slater{B}(ps::B...) where B<:AbstractBasis = Slater{B}(phs)
-Slater(ps::B...) where B<:AbstractBasis = Slater{B}(phs)
+Slater{B}(ps::B...) where B<:AbstractBasis = Slater{B}(ps)
+Slater(ps::B...) where B<:AbstractBasis = Slater{B}(ps)
 
 Base.:(==)(s1::MB, s2::MB) where MB<:Slater = s1.bits == s2.bits
 Base.in(p::B, s::Slater{B}) where B = s.bits[index(p)]
 Base.in(p::B, s::Sub{Slater{B}}) where B = p in s.state
 
-index(s::Slate) = sum(s.bits[i]*2^(i-1) for i in indices(s.bits, 1))
+index(s::Slater) = sum(s.bits[i]*2^(i-1) for i in indices(s.bits, 1))
 function indexbasis(::Type{Slater{B}}, ix::Int) where B 
     d = dim(B)
     states = falses(d)

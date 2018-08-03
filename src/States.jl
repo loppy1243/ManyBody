@@ -1,11 +1,12 @@
 @reexport module States
-export State, VecState, CVecState, MaybeBasis
+export State, VecState, CVecState, MaybeBasis, Bra
 
 using ..Bases
 using ..AbstractState
 using Suppressor: @suppress_err
 
-struct Zero <: AbstractState
+struct Bra{S<:AbstractState}; state::S end
+struct Zero <: AbstractState end
 struct State{B<:AbstractBasis, V<:AbstractVector} <: AbstractState
     vec::V
     State{B, V}(vec::V) where {B, V} = new(vec)
@@ -94,8 +95,6 @@ end
         end
     end
 end
-
-struct Bra{S<:AbstractState}; state::S end
 
 Base.:(==)(b1::Bra{S}, b2::Bra{S}) where S = b1.state == b2.state
 Base.ctranspose(s::AbstractState) = Bra(s)

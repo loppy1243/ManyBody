@@ -21,6 +21,25 @@ indexbasis(::Type{SB}, i) where {B, SB<:Sub{B}} = basis(SB)[i]
 subindices(::Type{B}) where B<:AbstractBasis = indices(B)
 subindexes(::Type{SB}) where SB<:Sub = map(Index{SB}, subindices(SB))
 
+
+get_tys(s::Symbol) = [s]
+get_tys(x::Expr) = if x.head == :curly
+    reduce(vcat, map(get_tys, x.args[2:end]))
+else
+    []
+end
+function get_free_tys(tys, x::Expr)
+    @assert x.head === :curly
+    ret = []
+    for y in x.args[2:end]
+        @assert y isa Symbol || y isa Expr && y.head === :(<:)
+        if !(y in tys)
+            push!(ret, y)
+        end
+    end
+
+    ret
+end
 macro defSubBasis(ty_expr::Expr, expr)
     @assert ty_expr.head == :(<:)
 
@@ -36,7 +55,8 @@ macro defSubBasis(ty_expr::Expr, expr)
     tys_esc = map(esc, tys)
     add_where(x) = tys == nothing ? x : Expr(:where, x, tys_esc...)
         
-    subbasis_ty_esc = esc(gensym(string(name(new_ty))))
+    free_tys = get_free_tys(get_tys(base_ty), new_ty)
+    subbasis_ty_esc = esc(Expr(:curly, gensym(string(name(new_ty))), free_tys...))
 
     new_ty_esc, base_ty_esc = esc.((new_ty, base_ty))
 

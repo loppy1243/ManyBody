@@ -5,7 +5,7 @@ export Operator, tabulate, refop, RaiseOp, LowerOp, RaiseLowerOps, A, refop, con
 using Combinatorics: permutations, levicivita
 using Loppy.Util: cartesian_pow
 using ..Bases
-using ..Bases: Index
+using ..States
 
 struct Operator{N, B<:AbstractBasis, Op}
     op::Op
@@ -25,14 +25,14 @@ nbodies(::Type{<:Operator{N}}) where N = N
 nbodies(op::Operator) = nbodies(typeof(op))
 
 tabulate(op) = tabulate(Complex64, op)
-tabulate(op::Operator{N, <:Index, <:AbstractArray}) where N = op
+tabulate(op::Operator{N, <:Bases.Index, <:AbstractArray}) where N = op
 function tabulate(::Type{T}, op::Operator{N, B, Op}) where {T, N, B, Op}
     mat = Array{T}(fill(dim(B), 2N)...)
     for ss in cartesian_pow(B, 2N)
         mat[CartesianIndex(map(index, ss))] = op(ss...)
     end
 
-    Operator{N, Index{B}, typeof(mat)}(mat)
+    Operator{N, Bases.Index{B}, typeof(mat)}(mat)
 end
 
 struct Raised{T}; val::T end
@@ -105,7 +105,7 @@ contract(::Type{R}, a1::LowerOp{B}, a2::RaiseOp{B}) where {B, R<:RefState{B}} =
     a1.state == a2.state ? ~isocc(R, a1.state) : 0
 contract(::Type, a::RLOp) = 0
 
-function contract(::Type{R}, a::RaiseLowerOps{B}) where R<:RefState{B}
+function contract(::Type{R}, a::RaiseLowerOps{B}) where {B, R<:RefState{B}}
     numops = n_ops(a)
     isodd(numops) && return 0
 
@@ -116,7 +116,7 @@ function contract(::Type{R}, a::RaiseLowerOps{B}) where R<:RefState{B}
     end
 end
 
-normord(a::RaiseLowerOps{B}) where B = normord(Vacuum{B}, a)
+normord(a::RaiseLowerOps{B}) where B = normord(RefStates.Vacuum{B}, a)
 function normord(::Type{R}, a::RaiseLowerOps{B}) where {B, R<:RefState{B}}
     function comp(a, b)
         if a[2] && b[2]
@@ -147,13 +147,17 @@ function apply_normord_rl(a::RaiseLowerOps, X::Bases.MaybeSub{<:Bases.Slater})
     sgn = 1
     for i = length(a.ops):-1:1
         sgn *= if a.ops[i] isa RaiseOp
-            a.ops[i].state in Y #=
-            =#  ? return (0, ZeroState())
-                : insert!(Y, a.ops[i].state)
+            if a.ops[i].state in Y
+                return (0, ZeroState())
+            else
+                insert!(Y, a.ops[i].state)
+            end
         else
-            !(a.ops[i].state in Y) #=
-            =#  ? return (0, ZeroState())
-                : delete!(Y, a.ops[i].state)
+            if !(a.ops[i].state in Y)
+                return (0, ZeroState())
+            else
+                delete!(Y, a.ops[i].state)
+            end
         end
     end
 
