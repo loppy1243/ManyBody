@@ -21,8 +21,7 @@ Base.done(::Type{B}, st) where B<:AbstractBasis = st > dim(B)
 
 Base.endof(::Type{B}) where B<:AbstractBasis = dim(B)
 Base.indices(::Type{B}) where B<:AbstractBasis = 1:dim(B)
-# NOTE: May not be a good idea for large bases
-@generated basis(::Type{B}) where B<:AbstractBasis = B[indices(B)]
+basis(::Type{B}) where B<:AbstractBasis = B[indices(B)]
 
 include("indexbasis.jl")
 include("subbasis.jl")
@@ -38,15 +37,12 @@ include("mbbasis.jl")
     for ph = 1:L-F
         for lhs in combinations(1:F, ph), lps in combinations(F+1:L, ph)
             state = deepcopy(ref)
-            for (lh, lp) in zip(lhs, lps)
-                annihil!(state, SP(lh, SPINUP))
-                annihil!(state, SP(lh, SPINDOWN))
-                create!(state, SP(lp, SPINUP))
-                create!(state, SP(lp, SPINUP))
+            for (lh, lp) in zip(lhs, lps), s in SPINS
+                annihil!(state, SP(lh, s))
+                create!(state, SP(lp, s))
             end
 
-            push!(ret, Slater{SP}(state))
-            println("HERE")
+            push!(ret, state)
         end
     end
 
