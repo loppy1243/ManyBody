@@ -148,15 +148,15 @@ function apply_normord_rl(a::RaiseLowerOps, X::Bases.MaybeSub{<:Bases.Slater})
     for i = length(a.ops):-1:1
         sgn *= if a.ops[i] isa RaiseOp
             if a.ops[i].state in Y
-                return (0, ZeroState())
+                return (0, States.Zero())
             else
-                insert!(Y, a.ops[i].state)
+                create!(Y, a.ops[i].state)
             end
         else
             if !(a.ops[i].state in Y)
-                return (0, ZeroState())
+                return (0, States.Zero())
             else
-                delete!(Y, a.ops[i].state)
+                annihil!(Y, a.ops[i].state)
             end
         end
     end

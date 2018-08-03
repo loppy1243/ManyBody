@@ -1,4 +1,5 @@
 export subindices, subindexes
+
 using Combinatorics: combinations
 using Loppy.Util: cartesian_pow
 using ..SpinMod
