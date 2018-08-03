@@ -21,12 +21,6 @@ end
     :(op.op[$((sps[i] !== B && <: Bases.Sub? :(index(sps[$i].state)) : :(index(sps[$i]))
                for i = 1:N2)...)])
 
-
-#for i = 1:3
-#    @eval @def_OperatorNBody $i
-#    @eval export $(OperatorNBody_sym(i))
-#end
-
 nbodies(::Type{<:Operator{N}}) where N = N
 nbodies(op::Operator) = nbodies(typeof(op))
 
