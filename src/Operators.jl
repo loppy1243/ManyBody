@@ -130,9 +130,9 @@ function normord(::Type{R}, a::RaiseLowerOps{B}) where {B, R<:RefState{B}}
 
     xs = map(a.ops) do b
         (b.state, if b isa RaiseOp
-            ispart(R, b.state)
+            ~isocc(R, b.state)
         else
-            ishole(R, b.state)
+            isocc(R, b.state)
         end)
     end
 
@@ -177,6 +177,19 @@ macro Operator(expr::Expr, basis)
         x = $(esc(expr))
         Operator{$nbodies, $(esc(basis)), typeof(x)}(x)
     end
+end
+
+Base.show(io::IO, x::RaiseOp) = print(io, "A($(x.state)')")
+Base.show(io::IO, x::LowerOp) = print(io, "A($(x.state) )")
+function Base.show(io::IO, x::RaiseLowerOps)
+    f(a::RaiseOp) = "$(a.state)'"
+    f(a::LowerOp) = "$(a.state) "
+
+    print(io, "A(", f(x.ops[1]))
+    for op in x.ops[2:end]
+        print(io, ", $(f(op))")
+    end
+    print(io, ")")
 end
 
 end # module Operators
