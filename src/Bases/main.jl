@@ -1,5 +1,5 @@
 @reexport module Bases
-export RefStates, AbstractState, AbstractBasis, RefState, Bra, overlap
+export RefStates, AbstractState, AbstractBasis, RefState, overlap
 # Basis interface
 export basis, index, indexbasis, dim #, Base.indices
 
