@@ -16,8 +16,9 @@ struct Slater{B<:AbstractBasis} <: AbstractBasis
         new(bits)
     end
 end
-Slater{B}(ps::B...) where B<:AbstractBasis = Slater{B}(ps)
-Slater(ps::B...) where B<:AbstractBasis = Slater{B}(ps)
+Slater(x::Tuple) = MethodError(Slater, (x,)) |> throw
+Slater(ps...) = Slater(ps)
+Slater(ps::NTuple{N, B}) where {N, B<:AbstractBasis} = Slater{B}(ps)
 
 Base.:(==)(s1::MB, s2::MB) where MB<:Slater = s1.bits == s2.bits
 Base.in(p::B, s::Slater{B}) where B = s.bits[index(p)]
