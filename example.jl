@@ -21,23 +21,23 @@ f(g) = @Operator(MBBASIS) do X, Y
     sum(SPBASIS) do p
 #        sgn1, NA = normord(REFSTATE, A(p', p))
         sgn1, NA = 1, A(p', p)
-        sgn2, Y2 = apply_normord_rl(NA, Y)
+        sgn2, Y2 = NA(Y)
         (LEVEL_SPACING*(level(p)-1))*sgn1*sgn2*(X'Y2)
     end
 end
 
 V(g) = @Operator(MBBASIS) do X, Y
-    X == Y ? -g : index(X) + index(Y) - 1 == dim(MBBASIS) ? 0.0 : -g/2
-#    sum(cartesian_pow(SPBASIS, Val{2})) do I
-#        p, r = I
-#        q = flipspin(p)
-#        s = flipspin(r)
-##        sgn1, NA = normord(REFSTATE, a)
-#        sgn1, NA = 1, A(p', q', s, r)
-#        sgn2, Y2 = apply_normord_rl(NA, Y)
-#
-#        -g/2*sgn1*sgn2*(X'Y2)
-#    end
+#    X == Y ? -g : index(X) + index(Y) - 1 == dim(MBBASIS) ? 0.0 : -g/2
+    sum(cartesian_pow(SPBASIS, Val{2})) do I
+        p, r = I
+        q = flipspin(p)
+        s = flipspin(r)
+#        sgn1, NA = normord(REFSTATE, a)
+        sgn1, NA = 1, A(p', q', s, r)
+        sgn2, Y2 = NA(Y)
+
+        -g/2*sgn1*sgn2*(X'Y2)
+    end
 end
 
 H(g) = @Operator(MBBASIS) do X, Y

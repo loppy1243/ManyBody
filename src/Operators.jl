@@ -145,7 +145,7 @@ function normord(::Type{R}, a::RaiseLowerOps{B}) where {B<:AbstractBasis, R<:Ref
     return (levicivita(p), RaiseLowerOps(a.ops[p]))
 end
 
-function apply_normord_rl(a::RaiseLowerOps, X::Bases.MaybeSub{<:Bases.Slater})
+function (a::RaiseLowerOps)(X::Bases.MaybeSub{<:Bases.Slater})
     Y = deepcopy(convert(Bases.Slater, X))
     B = typeof(Y)
 

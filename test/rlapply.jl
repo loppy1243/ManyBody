@@ -7,30 +7,30 @@ function rlapply()
 
     @testset "One Body" begin for X in MBBASIS
         X2 = convert(Bases.Slater, X)
-        @test apply_normord_rl(A(p, p), X) == (0, States.ZERO)
-        @test apply_normord_rl(A(q, q), X) == (0, States.ZERO)
-        @test apply_normord_rl(A(p', p'), X) == (0, States.ZERO)
-        @test apply_normord_rl(A(q', q'), X) == (0, States.ZERO)
-        @test apply_normord_rl(A(p', p), X) == (p in X, p in X ? X2 : States.ZERO)
-        @test apply_normord_rl(A(q', q), X) == (q in X, q in X ? X2 : States.ZERO)
-        @test apply_normord_rl(A(p, p'), X) == (1 - (p in X), p in X ? States.ZERO : X2)
-        @test apply_normord_rl(A(q, q'), X) == (1 - (q in X), q in X ? States.ZERO : X2)
+        @test A(p, p)(X) == (0, States.ZERO)
+        @test A(q, q)(X) == (0, States.ZERO)
+        @test A(p', p')(X) == (0, States.ZERO)
+        @test A(q', q')(X) == (0, States.ZERO)
+        @test A(p', p)(X) == (p in X, p in X ? X2 : States.ZERO)
+        @test A(q', q)(X) == (q in X, q in X ? X2 : States.ZERO)
+        @test A(p, p')(X) == (1 - (p in X), p in X ? States.ZERO : X2)
+        @test A(q, q')(X) == (1 - (q in X), q in X ? States.ZERO : X2)
 
         if p != q && !(p in X) || !(q in X)
-            @test apply_normord_rl(A(p, q), X) == (0, States.ZERO)
-            @test apply_normord_rl(A(q, p), X) == (0, States.ZERO)
+            @test A(p, q)(X) == (0, States.ZERO)
+            @test A(q, p)(X) == (0, States.ZERO)
         end
         if p != q && p in X || q in X
-            @test apply_normord_rl(A(p', q'), X) == (0, States.ZERO)
-            @test apply_normord_rl(A(q', p'), X) == (0, States.ZERO)
+            @test A(p', q')(X) == (0, States.ZERO)
+            @test A(q', p')(X) == (0, States.ZERO)
         end
     end end
 
     @testset "Two Body" begin
         X = Bases.Slater(SPBASIS.((1, 2, 3, 3),
                                   (SPINDOWN, SPINDOWN, SPINDOWN, SPINUP)))
-        @test apply_normord_rl(A(p, q, r, s), MBBASIS[1]) == (0, States.ZERO)
-        @test apply_normord_rl(A(p, q', r, s'), MBBASIS[1]) #=
+        @test A(p, q, r, s)(MBBASIS[1]) == (0, States.ZERO)
+        @test A(p, q', r, s')(MBBASIS[1]) #=
            =# == (-1, X)
     end
 end; nothing end
