@@ -10,14 +10,16 @@ using ..States
 struct Operator{N, B<:AbstractBasis, Op}
     op::Op
 end
-@generated (op::Operator{N, B, Op})(args::Vararg{<:Bases.MaybeSub{B}, N2}) where {N, N2, B, Op} =
+@generated (op::Operator{N, B, Op})(args::Vararg{<:Bases.MaybeSub{B}, N2}) where
+                                   {N, N2, B<:AbstractBasis, Op} =
     :(applyop(Val{$(2N)}, op, $((:(args[$i]) for i=1:N2)...)))
 @generated applyop(::Type{Val{N2}}, op::Operator{N, B, <:Function},
-                   sps::Vararg{<:Bases.MaybeSub{B}, N2}) where {N, N2, B} =
+                   sps::Vararg{<:Bases.MaybeSub{B}, N2}) where {N, N2, B<:AbstractBasis} =
     :(op.op($((sps[i] !== B && sps[i] <: Bases.Sub? :(sps[$i].state) : :(sps[$i])
                for i = 1:N2)...)))
 @generated applyop(::Type{Val{N2}}, op::Operator{N, B, <:AbstractArray{T, N2}},
-                   sps::Vararg{Union{B, SB}, N2}) where {N, N2, B, T, SB<:Bases.Sub{B}} =
+                   sps::Vararg{Union{B, SB}, N2}) where
+                  {N, N2, B<:AbstractBasis, T, SB<:Bases.Sub{B}} =
     :(op.op[$((sps[i] !== B && <: Bases.Sub? :(index(sps[$i].state)) : :(index(sps[$i]))
                for i = 1:N2)...)])
 
@@ -26,7 +28,7 @@ nbodies(op::Operator) = nbodies(typeof(op))
 
 tabulate(op) = tabulate(Complex64, op)
 tabulate(op::Operator{N, <:Bases.Index, <:AbstractArray}) where N = op
-function tabulate(::Type{T}, op::Operator{N, B, Op}) where {T, N, B, Op}
+function tabulate(::Type{T}, op::Operator{N, B, Op}) where {T, N, B<:AbstractBasis, Op}
     mat = Array{T}(fill(dim(B), 2N)...)
     for ss in cartesian_pow(B, 2N)
         mat[CartesianIndex(map(index, ss))] = op(ss...)
@@ -53,32 +55,35 @@ Base.:(==)(a::R, b::R) where R<:RLOp = a.state == b.state
 Base.:(==)(::RaiseLowerOps, ::RaiseLowerOps) = false
 Base.:(==)(a::R, b::R) where R<:RaiseLowerOps = a.ops == b.ops
 
-Base.convert(::Type{RaiseLowerOps{B}}, a::RLOp{B}) where B = RaiseLowerOps{B}([a])
-Base.convert(::Type{RaiseLowerOps}, a::RLOp{B}) where B = RaiseLowerOps{B}([a])
+Base.convert(::Type{RaiseLowerOps{B}}, a::RLOp{B}) where B<:AbstractBasis =
+    RaiseLowerOps{B}([a])
+Base.convert(::Type{RaiseLowerOps}, a::RLOp{B}) where B<:AbstractBasis = RaiseLowerOps{B}([a])
 
-Base.:*(op1::RLOp{B}, op2::RLOp{B}) where B = RaiseLowerOps{B}([op1, op2])
-Base.:*(op1::RLOp{B}, op2::RaiseLowerOps{B}) where B = RaiseLowerOps{B}([op1; op2.ops])
-Base.:*(op1::RaiseLowerOps{B}, op2::RLOp{B}) where B = RaiseLowerOps{B}([op2.ops; op2])
-Base.:*(op1::RaiseLowerOps{B}, op2::RaiseLowerOps{B}) where B =
+Base.:*(op1::RLOp{B}, op2::RLOp{B}) where B<:AbstractBasis = RaiseLowerOps{B}([op1, op2])
+Base.:*(op1::RLOp{B}, op2::RaiseLowerOps{B}) where B<:AbstractBasis =
+    RaiseLowerOps{B}([op1; op2.ops])
+Base.:*(op1::RaiseLowerOps{B}, op2::RLOp{B}) where B<:AbstractBasis =
+    RaiseLowerOps{B}([op2.ops; op2])
+Base.:*(op1::RaiseLowerOps{B}, op2::RaiseLowerOps{B}) where B<:AbstractBasis =
     RaiseLowerOps{B}([op1.ops; op2.ops])
-Base.ctranspose(op::RaiseOp{B}) where B = LowerOp{B}(op.state)
-Base.ctranspose(op::LowerOp{B}) where B = RaiseOp{B}(op.state)
-Base.ctranspose(op::RaiseLowerOps{B}) where B =
+Base.ctranspose(op::RaiseOp{B}) where B<:AbstractBasis = LowerOp{B}(op.state)
+Base.ctranspose(op::LowerOp{B}) where B<:AbstractBasis = RaiseOp{B}(op.state)
+Base.ctranspose(op::RaiseLowerOps{B}) where B<:AbstractBasis =
     RaiseLowerOps{B}(reverse(map(ctranspose, op.ops)))
 
 A(sps...) = A(sps)
 A(T::Type, sps...) = A(T, sps)
 
-A(p::Bases.MaybeSub) = LowerOp(p)
-A(p::Bra{<:Bases.MaybeSub}) = RaiseOp(p.state)
+A(p::AbstractBasis) = LowerOp(p)
+A(p::Bra{<:AbstractBasis}) = RaiseOp(p.state)
 
 @generated function A(sps::NTuple{N, Union{T, Bra{T}, Raised{T}}}) where
-                     {B, T<:Bases.MaybeSub{B}, N}
+                     {B<:AbstractBasis, T<:Bases.MaybeSub{B}, N}
     args = map(enumerate(sps.parameters)) do x
-        i, T = x
-        if T <: Bra
+        i, U = x
+        if U <: Bra
             :(RaiseOp(sps[$i].state))
-        elseif T <: Raised
+        elseif U <: Raised
             :(RaiseOp(sps[$i].val))
         else
             :(LowerOp(sps[$i]))
@@ -92,7 +97,7 @@ n_ops(::RLOp) = 1
 n_ops(a::RaiseLowerOps) = length(a.ops)
 
 refop(s::Bases.Sub{B}) where B<:AbstractBasis = refop(s.state)
-function refop(s::Bases.Slater{B}) where B
+function refop(s::Bases.Slater{B}) where B<:AbstractBasis
     a = RaiseLowerOps{B}(map(x -> RaiseOp{B}(indexp(R, x)), find(s.parts)))
     b = RaiseLowerOps{B}(map(x -> LowerOp{B}(indexh(R, x)), find(s.holes)))
     a*b
@@ -105,7 +110,7 @@ contract(::Type{R}, a1::LowerOp{B}, a2::RaiseOp{B}) where {B, R<:RefState{B}} =
     a1.state == a2.state ? ~isocc(R, a1.state) : 0
 contract(::Type, a::RLOp) = 0
 
-function contract(::Type{R}, a::RaiseLowerOps{B}) where {B, R<:RefState{B}}
+function contract(::Type{R}, a::RaiseLowerOps{B}) where {B<:AbstractBasis, R<:RefState{B}}
     numops = n_ops(a)
     isodd(numops) && return 0
 
@@ -116,8 +121,8 @@ function contract(::Type{R}, a::RaiseLowerOps{B}) where {B, R<:RefState{B}}
     end
 end
 
-normord(a::RaiseLowerOps{B}) where B = normord(RefStates.Vacuum{B}, a)
-function normord(::Type{R}, a::RaiseLowerOps{B}) where {B, R<:RefState{B}}
+normord(a::RaiseLowerOps{B}) where B<:AbstractBasis = normord(RefStates.Vacuum{B}, a)
+function normord(::Type{R}, a::RaiseLowerOps{B}) where {B<:AbstractBasis, R<:RefState{B}}
     function comp(a, b)
         if a[2] && b[2]
             index(a[1]) >= index(b[1])
