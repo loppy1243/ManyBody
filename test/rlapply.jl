@@ -3,7 +3,8 @@ function rlapply()
     SPBASIS = Bases.Pairing{4}
     MBBASIS = Bases.Paired{2, 4}
 
-    p, q, r, s = SPBASIS.((1, 3, 2, 3), (SPINUP, SPINDOWN, SPINUP, SPINUP))
+    p, q, r, s, t, u = SPBASIS.((1, 3, 2, 3, 4, 1),
+                                (SPINUP, SPINDOWN, SPINUP, SPINUP, SPINDOWN, SPINDOWN))
 
     @testset "One Body" begin for X in MBBASIS
         X2 = convert(Bases.Slater, X)
@@ -27,10 +28,13 @@ function rlapply()
     end end
 
     @testset "Two Body" begin
+        @test A(p, q, r, s)(MBBASIS[1]) == (0, States.ZERO)
         X = Bases.Slater(SPBASIS.((1, 2, 3, 3),
                                   (SPINDOWN, SPINDOWN, SPINDOWN, SPINUP)))
-        @test A(p, q, r, s)(MBBASIS[1]) == (0, States.ZERO)
-        @test A(p, q', r, s')(MBBASIS[1]) #=
-           =# == (-1, X)
+        @test A(p, q', r, s')(MBBASIS[1]) == (-1, X)
+        X = Bases.Slater(SPBASIS.((1, 2), (SPINDOWN, SPINDOWN)))
+        @test A(p, q, r, q')(MBBASIS[1]) == (-1, X)
+        X = Bases.Slater(SPBASIS.((1, 2, 3, 4), (SPINUP, SPINDOWN, SPINDOWN, SPINDOWN)))
+        @test A(t', r, u, q')(MBBASIS[1]) == (-1, X)
     end
 end; nothing end
