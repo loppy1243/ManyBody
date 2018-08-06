@@ -14,6 +14,8 @@ end
 const VecState{B, T} = State{B, Vector{T}}
 const CVecState{B} = VecState{B, Complex64}
 
+const ZERO = Zero()
+
 function State{B, V}(x::B) where {B<:AbstractBasis, V<:AbstractVector}
     v = zero(V(dim(B)))
     v[index(x)] = oneunit(eltype(V))
