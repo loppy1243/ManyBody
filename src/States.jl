@@ -50,6 +50,11 @@ function Base.convert(::Type{B}, x::State{B}) where B
     B[i]
 end
 
+Base.promote_rule(::Type{SS}, ::Type{SB}) where
+                 {B<:AbstractBasis, SS<:State{<:Bases.Sub{B}}, SB<:State{B}} = SB
+Base.promote_rule(::Type{<:Bases.MaybeSub{B}}, ::Type{S}) where
+                 {B<:AbstractBasis, S<:State{B}} = S
+
 @suppress_err for op in (:+, :-), T in (:(MaybeBasis{B}), :(Bra{MaybeBasis{B}}))
     @eval begin
         function Base.$op(a::$T, b::$T) where B<:AbstractBasis

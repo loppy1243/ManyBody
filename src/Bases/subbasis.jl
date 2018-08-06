@@ -14,6 +14,7 @@ Base.convert(::Type{C}, x::Sub{B}) where {C, B<:C} = x.state
 Base.convert(::Type{SB}, x::B) where {B, SB<:Sub{B}} = SB(x)
 
 Base.:(==)(x::SB, y::SB) where SB<:Sub = x.state == y.state
+Base.promote_rule(::Type{<:Sub{B}}, ::Type{B}) where B<:AbstractBasis = B
 
 dim(::Type{SB}) where SB<:Sub = length(subindices(SB))
 index(x::Sub) = findfirst(basis(typeof(x)), x)
