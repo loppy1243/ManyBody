@@ -10,6 +10,8 @@ using ..States
 struct Operator{N, B<:AbstractBasis, Op}
     op::Op
 end
+Operator{N, B}(op) where {N, B<:AbstractBasis} = Operator{N, B, typeof(op)}(op)
+
 @generated (op::Operator{N, B, Op})(args::Vararg{<:Bases.MaybeSub{B}, N2}) where
                                    {N, N2, B<:AbstractBasis, Op} =
     :(applyop(Val{$(2N)}, op, $((:(args[$i]) for i=1:N2)...)))
@@ -27,7 +29,10 @@ nbodies(::Type{<:Operator{N}}) where N = N
 nbodies(op::Operator) = nbodies(typeof(op))
 
 tabulate(op) = tabulate(Complex64, op)
-tabulate(op::Operator{N, <:Bases.Index, <:AbstractArray}) where N = op
+tabulate(::Type, x::Number) = x
+tabulate(::Type, x::AbstractArray) = x
+tabulate(::Type{T}, op::Operator{N, B, <:AbstractArray}) where {T, N, B<:Bases.Index} =
+    Operator{N, B}(convert(AbstractArray{T}, op.op))
 function tabulate(::Type{T}, op::Operator{N, B, Op}) where {T, N, B<:AbstractBasis, Op}
     mat = Array{T}(fill(dim(B), 2N)...)
     for ss in cartesian_pow(B, 2N)
