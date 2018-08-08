@@ -25,6 +25,12 @@ Operator{N, B}(op) where {N, B<:AbstractBasis} = Operator{N, B, typeof(op)}(op)
     :(op.op[$((sps[i] !== B && <: Bases.Sub? :(index(sps[$i].state)) : :(index(sps[$i]))
                for i = 1:N2)...)])
 
+# Add Operator val type?
+@generated Base.zero(::Type{<:Operator{N, B, <:Function}}) =
+    :(Operator{N, B}(($((gensym() for _ = 1:2N)...)) -> 0)
+Base.zero(::Type{<:Operator{N, B, A}}) where A<:AbstractArray =
+    Operator{N, B, A}(zero(A(fill(dim(B), 2N)...)))
+
 nbodies(::Type{<:Operator{N}}) where N = N
 nbodies(op::Operator) = nbodies(typeof(op))
 
