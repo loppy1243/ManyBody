@@ -104,7 +104,7 @@ end
 end
 
 Base.:(==)(b1::Bra{S}, b2::Bra{S}) where S = b1.state == b2.state
-Base.ctranspose(s::AbstractState) = Bra(s)
+Base.adjoint(s::AbstractState) = Bra(s)
 Base.:*(bra::Bra, ket::AbstractState) = overlap(bra.state, ket)
 Base.:*(x::Number, a::Zero) = Zero()
 Base.:*(a::Zero, x::Number) = Zero()

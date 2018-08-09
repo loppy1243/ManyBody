@@ -81,10 +81,10 @@ Base.:*(op1::RaiseLowerOps{B}, op2::RLOp{B}) where B<:AbstractBasis =
     RaiseLowerOps{B}([op2.ops; op2])
 Base.:*(op1::RaiseLowerOps{B}, op2::RaiseLowerOps{B}) where B<:AbstractBasis =
     RaiseLowerOps{B}([op1.ops; op2.ops])
-Base.ctranspose(op::RaiseOp{B}) where B<:AbstractBasis = LowerOp{B}(op.state)
-Base.ctranspose(op::LowerOp{B}) where B<:AbstractBasis = RaiseOp{B}(op.state)
-Base.ctranspose(op::RaiseLowerOps{B}) where B<:AbstractBasis =
-    RaiseLowerOps{B}(reverse(map(ctranspose, op.ops)))
+Base.adjoint(op::RaiseOp{B}) where B<:AbstractBasis = LowerOp{B}(op.state)
+Base.adjoint(op::LowerOp{B}) where B<:AbstractBasis = RaiseOp{B}(op.state)
+Base.adjoint(op::RaiseLowerOps{B}) where B<:AbstractBasis =
+    RaiseLowerOps{B}(reverse(map(adjoint, op.ops)))
 
 A(sps...) = A(sps)
 A(T::Type, sps...) = A(T, sps)
@@ -223,7 +223,7 @@ Base.zero(::Type{<:Operator{N, B, A}}) where {N, B<:AbstractBasis, A<:AbstractAr
 end
 
 # TODO
-#Base.ctranspose(A::Operator{N, B})
+#Base.adjoint(A::Operator{N, B})
 
 for op in (:*, :+, :-)
     @eval Base.$op(As::Operator{N, B}) where {N, B<:AbstractBasis} =
