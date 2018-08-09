@@ -1,5 +1,3 @@
-export subindices, subindexes
-
 using Combinatorics: combinations
 using ..SpinMod
 
@@ -15,13 +13,9 @@ Base.convert(::Type{SB}, x::B) where {B, SB<:Sub{B}} = SB(x)
 Base.:(==)(x::SB, y::SB) where SB<:Sub = x.state == y.state
 Base.promote_rule(::Type{<:Sub{B}}, ::Type{B}) where B<:AbstractBasis = B
 
-dim(::Type{SB}) where SB<:Sub = length(subindices(SB))
+dim(::Type{SB}) where SB<:Sub = length(basis(SB))
 index(x::Sub) = findfirst(basis(typeof(x)), x)
 indexbasis(::Type{SB}, i) where {B, SB<:Sub{B}} = basis(SB)[i]
-
-subindices(::Type{B}) where B<:AbstractBasis = indices(B)
-subindexes(::Type{SB}) where SB<:Sub = map(Index{SB}, subindices(SB))
-
 
 get_tys(s::Symbol) = [s]
 get_tys(x::Expr) = if x.head == :curly
@@ -61,7 +55,6 @@ macro defSubBasis(ty_expr::Expr, expr)
 
     new_ty_esc, base_ty_esc = esc.((new_ty, base_ty))
 
-    subindices_expr(x) = add_where(:(Bases.subindices($x::Type{$new_ty_esc})))
     basis_expr = add_where(:(Bases.basis(::Type{$new_ty_esc})))
 
     quote
@@ -74,6 +67,5 @@ macro defSubBasis(ty_expr::Expr, expr)
             @assert allunique(x)
             map($new_ty_esc, x)
         end
-        @generated $(subindices_expr(:T)) = map(index, basis(T.parameters[1]))
     end
 end

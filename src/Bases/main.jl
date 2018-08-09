@@ -1,7 +1,7 @@
 @reexport module Bases
 export RefStates, AbstractState, AbstractBasis, RefState, overlap
 # Basis interface
-export basis, index, indexbasis, dim #, Base.indices
+export basis, index, indexbasis, dim
 
 using ..AbstractState
 using Reexport: @reexport
@@ -15,13 +15,14 @@ Base.getindex(::Type{B}, ixs...) where B<:AbstractBasis = indexbasis(B, ixs...)
 Base.getindex(::Type{B}, ixs::Array) where B<:AbstractBasis = map(i -> indexbasis(B, i), ixs)
 Base.getindex(::Type{B}, r::AbstractRange{Int}) where B<:AbstractBasis = map(i -> indexbasis(B, i), r)
 
-Base.start(::Type{B}) where B<:AbstractBasis = 1
-Base.next(::Type{B}, st) where B<:AbstractBasis = (B[st], st+1)
-Base.done(::Type{B}, st) where B<:AbstractBasis = st > dim(B)
+Base.iterate(::Type{B}, i=1) where B<:AbstractBasis = i > dim(B) ? nothing : (B[i], i+1)
+Base.IteratorSize(::Type{B}) where B<:AbstractBasis = HasLength()
+Base.IteratorElType(::Type{B}) where B<:AbstractBasis = HasElType()
 
-Base.endof(::Type{B}) where B<:AbstractBasis = dim(B)
-Base.indices(::Type{B}) where B<:AbstractBasis = 1:dim(B)
-basis(::Type{B}) where B<:AbstractBasis = B[indices(B)]
+Base.length(::Type{B}) where B<:AbstractBasis = dim(B)
+Base.eltype(::Type{B}) where B<:AbstractBasis = B
+
+basis(::Type{B}) where B<:AbstractBasis = B[1:dim(B)]
 
 include("indexbasis.jl")
 include("subbasis.jl")
