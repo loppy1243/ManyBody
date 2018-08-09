@@ -1,4 +1,3 @@
-using Combinatorics: combinations
 using ..SpinMod
 
 struct Sub{B<:AbstractBasis, T} <: AbstractBasis
