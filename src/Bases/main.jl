@@ -14,6 +14,8 @@ Base.:(==)(x::B, y::B) where B<:AbstractBasis = index(x) == index(y)
 Base.getindex(::Type{B}, ixs...) where B<:AbstractBasis = indexbasis(B, ixs...)
 Base.getindex(::Type{B}, ixs::Array) where B<:AbstractBasis = map(i -> indexbasis(B, i), ixs)
 Base.getindex(::Type{B}, r::AbstractRange{Int}) where B<:AbstractBasis = map(i -> indexbasis(B, i), r)
+Base.firstindex(::Type{B}) = 1
+Base.lastindex(::Type{B}) = dim(B)
 
 Base.iterate(::Type{B}, i=1) where B<:AbstractBasis = i > dim(B) ? nothing : (B[i], i+1)
 Base.IteratorSize(::Type{B}) where B<:AbstractBasis = HasLength()
