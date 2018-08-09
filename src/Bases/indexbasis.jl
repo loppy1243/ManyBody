@@ -6,7 +6,7 @@ end
 const MaybeIndex{B<:AbstractBasis} = Union{B, Index{B}}
 Index(s::AbstractBasis) = Index{typeof(s)}(index(s))
 
-indexes(::Type{B}) where B<:AbstractBasis = map(Index{B}, indices(B))
+indexes(::Type{B}) where B<:AbstractBasis = map(Index{B}, 1:dim(B))
 
 index(s::Index) = s.index
 indexbasis(::Type{S}, s::Int) where S<:Index = S(s)

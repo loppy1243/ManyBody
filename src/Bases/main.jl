@@ -33,8 +33,6 @@ include("pairing.jl")
 include("refstates.jl")
 include("mbbasis.jl")
 
-const Rep{B<:AbstractBasis} =
-    Union{B, <:SubBasis{B}, Index{B}, <:SubBasis{Index{B}}, Index{<:SubBasis{B}}}
 Base.convert(::Type{B}, s::SubBasis{Index{B}}) = convert(B, s.state)
 Base.convert(::Type{B}, s::Index{SB}) where SB<:SubBasis{B} = convert(B, SB[index(s)])
 

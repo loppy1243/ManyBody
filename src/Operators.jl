@@ -8,32 +8,60 @@ using JuliaUtil: cartesian_pow
 using ..Bases
 using ..States
 
-struct Operator{N, B<:AbstractBasis, Op, T}
-    op::Op
-
-    Operator{N, B, Op, T}(op::Op) where {N, B, Op, T} = new(op)
-    function Operator{N, B, Op, T}(op::Op) where {N, B, T, Op<:AbstractArray}
-        @assert eltype(Op) == T
-        new(op)
-    end
+abstract type AbstractOperator{N, B<:AbstractBasis} end
+struct ActionOperator{N, B<:AbstractBasis, F<:Function} <: AbastractOperator{N, B}
+    func::F
 end
-const COperator{N, B<:AbstractBasis, Op} = Operator{N, B, Op, ComplexF64}
-Operator{N, B}(T, op) where {N, B<:AbstractBasis} = Operator{N, B, typeof(op), T}(op)
-Operator{N, B}(op::AbstractArray) where {N, B<:AbstractBasis} =
-    Operator{N, B, typeof(op), eltype(T)}(op)
+struct FunctionOperator{N, B<:AbstractBasis, T, F<:Function} <: AbstractOperator{N, B}
+    func::F
+end
+struct ArrayOperator{N, B<:AbstractBasis, A<:AbstractArray} <: AbstractOperator{N, B}
+    arr::A
+end
+struct MatrixOperator{N, B<:AbstractBasis, M<:AbstractMatrix} <: AbstractOperator{N, B}
+    mat::M
+end
+FunctionOperator{N, B, T}(f::Function) where {N, B<:AbstractBasis, T} =
+    FunctionOperator{N, B, T, typeof(f)}(f)
+ActionOperator{N, B}(f::Function) where {N, B<:AbstractBasis} =
+    ActionOperator{N, B, typeof(f)}(f)
+ArrayOperator{N, B}(a::AbstractArray) where {N, B<:AbstractBasis} =
+    ArrayOperator{N, B, typeof(a)}(a)
+MatrixOperator{N, B}(m::AbstractArray) where {N, B<:AbstractBasis} =
+    MatrixOperator{N, B, typeof(m)}(m)
 
-@generated (op::Operator{N, B, Op, T})(args::Vararg{<:Bases.MaybeSub{B}, N2}) where
-                                   {N, N2, B<:AbstractBasis, Op, T} =
+#struct Operator{N, B<:AbstractBasis, Op, T}
+#    op::Op
+#
+#    Operator{N, B, Op, T}(op::Op) where {N, B, Op, T} = new(op)
+#    function Operator{N, B, Op, T}(op::Op) where {N, B, T, Op<:AbstractArray}
+#        @assert eltype(Op) == T
+#        new(op)
+#    end
+#end
+#const COperator{N, B<:AbstractBasis, Op} = Operator{N, B, Op, ComplexF64}
+#Operator{N, B}(T, op) where {N, B<:AbstractBasis} = Operator{N, B, typeof(op), T}(op)
+#Operator{N, B}(op::AbstractArray) where {N, B<:AbstractBasis} =
+#    Operator{N, B, typeof(op), eltype(T)}(op)
+
+## ???????
+function (op::Operator{N, B})(args::Vararg{<:Any, N}) where {N, B<:AbstractBasis}
+    args::NTuple{N, CVecState{B}} = args
+    ret = Array{ComplexF64}(undef, fill(dim(B), N)...)
+    for X in cartesian_pow(B, Val{N})
+        ret[CartesianIndex(map(index, X))] = sum(cartesian_pow(B, Val{N})) do Y
+            op[X..., Y...]*sum(Y.' .* args)
+        end
+    end
+
+    State{B}(ret)
+end
+
+@generated function (op::Operator{N, B})(args::Vararg{<:Bases.MaybeSub{B}, N2}) where
+                               {N, N2, B<:AbstractBasis, Op, T} =
+    @assert N2 == 2N
     :(applyop(Val{$(2N)}, op, $((:(args[$i]) for i=1:N2)...)))
-@generated applyop(::Type{Val{N2}}, op::Operator{N, B, <:Function, T},
-                   sps::Vararg{<:Bases.MaybeSub{B}, N2}) where {N, N2, B<:AbstractBasis, T} =
-    :(convert(T, op.op($((sps[i] !== B && sps[i] <: Bases.Sub ? :(sps[$i].state) : :(sps[$i])
-                          for i = 1:N2)...))))
-@generated applyop(::Type{Val{N2}}, op::Operator{N, B, <:AbstractArray{T, N2}},
-                   sps::Vararg{Union{B, SB}, N2}) where
-                  {N, N2, B<:AbstractBasis, T, SB<:Bases.Sub{B}} =
-    :(op.op[$((sps[i] !== B && <: Bases.Sub ? :(index(sps[$i].state)) : :(index(sps[$i]))
-               for i = 1:N2)...)])
+end
 
 nbodies(::Type{<:Operator{N}}) where N = N
 nbodies(op::Operator) = nbodies(typeof(op))
