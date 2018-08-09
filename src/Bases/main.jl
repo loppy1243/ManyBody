@@ -4,6 +4,7 @@ export RefStates, AbstractState, AbstractBasis, RefState, overlap
 export basis, index, indexbasis, dim
 
 using ..AbstractState
+using Combinatorics: combinations
 using Reexport: @reexport
 
 abstract type AbstractBasis <: AbstractState end
@@ -31,6 +32,11 @@ include("subbasis.jl")
 include("pairing.jl")
 include("refstates.jl")
 include("mbbasis.jl")
+
+const Rep{B<:AbstractBasis} =
+    Union{B, <:SubBasis{B}, Index{B}, <:SubBasis{Index{B}}, Index{<:SubBasis{B}}}
+Base.convert(::Type{B}, s::SubBasis{Index{B}}) = convert(B, s.state)
+Base.convert(::Type{B}, s::Index{SB}) where SB<:SubBasis{B} = convert(B, SB[index(s)])
 
 @defSubBasis Paired{F, L} <: Slater{Pairing{L}} begin
     SP = Pairing{L}
