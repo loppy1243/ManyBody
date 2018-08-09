@@ -1,0 +1,6 @@
+authors = ["Nicholas <todoroff@nscl.msu.edu>"]
+name = "ManyBody"
+uuid = "59cbdfb0-9bfb-11e8-2ea2-0574352e373b"
+version = "0.1.0"
+
+[deps]
