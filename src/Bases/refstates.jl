@@ -50,8 +50,8 @@ const n_occ = nholes
 #indexh(::Type{<:RefStates.Vacuum}, n::Int) = 0
 #indexh(::Type{RefStates.Fermi{F, SP}}, n::Int) where {F, SP<:Pairing} = SP[n]
 
-isocc(::Type{R}, s<:Index{B}) where B<:AbstractBasis = isocc(R, B[index(s)])
-isocc(::Type{R}, s<:Sub) = isocc(R, s.state)
+isocc(::Type{R}, s::Index{B}) where {B<:AbstractBasis, R<:RefState{B}} = isocc(R, B[index(s)])
+isocc(::Type{R}, s::Sub{B}) where {B<:AbstractBasis, R<:RefState{B}} = isocc(R, s.state)
 
 isocc(::Type{R}, s::SP) where {SP, R<:RefState{SP}} = s in holes(R)
 isocc(::Type{RefStates.Vacuum{SP}}, s::SP) where SP = false

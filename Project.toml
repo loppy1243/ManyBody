@@ -1,6 +1,10 @@
-authors = ["Nicholas <todoroff@nscl.msu.edu>"]
 name = "ManyBody"
 uuid = "59cbdfb0-9bfb-11e8-2ea2-0574352e373b"
+authors = ["Nicholas <todoroff@nscl.msu.edu>"]
 version = "0.1.0"
 
 [deps]
+Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
+JuliaUtil = "e0285c20-9bfe-11e8-0cca-5f36c2b0fa53"
+Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
+Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"

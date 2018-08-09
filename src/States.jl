@@ -12,7 +12,7 @@ struct State{B<:AbstractBasis, V<:AbstractVector} <: AbstractState
     State{B, V}(vec::V) where {B, V} = new(vec)
 end
 const VecState{B, T} = State{B, Vector{T}}
-const CVecState{B} = VecState{B, Complex64}
+const CVecState{B} = VecState{B, ComplexF64}
 
 const ZERO = Zero()
 

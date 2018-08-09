@@ -2,8 +2,9 @@
 export Operator, tabulate, refop, RaiseOp, LowerOp, RaiseLowerOps, A, refop, contract,
        normord, apply_normord_rl, @Operator
 
+using Base.Cartesian
 using Combinatorics: levicivita
-using Loppy.Util: cartesian_pow
+using JuliaUtil: cartesian_pow
 using ..Bases
 using ..States
 
@@ -16,28 +17,28 @@ struct Operator{N, B<:AbstractBasis, Op, T}
         new(op)
     end
 end
-const COperator{N, B<:AbstractBasis, Op} = Operator{N, B, Op, Complex64}
+const COperator{N, B<:AbstractBasis, Op} = Operator{N, B, Op, ComplexF64}
 Operator{N, B}(T, op) where {N, B<:AbstractBasis} = Operator{N, B, typeof(op), T}(op)
-Operator{N, B}(op::AbstractArray{T}) where {N, B<:AbstractBasis} =
-    Operator{N, B, typeof(op), T}(op)
+Operator{N, B}(op::AbstractArray) where {N, B<:AbstractBasis} =
+    Operator{N, B, typeof(op), eltype(T)}(op)
 
 @generated (op::Operator{N, B, Op, T})(args::Vararg{<:Bases.MaybeSub{B}, N2}) where
                                    {N, N2, B<:AbstractBasis, Op, T} =
     :(applyop(Val{$(2N)}, op, $((:(args[$i]) for i=1:N2)...)))
 @generated applyop(::Type{Val{N2}}, op::Operator{N, B, <:Function, T},
                    sps::Vararg{<:Bases.MaybeSub{B}, N2}) where {N, N2, B<:AbstractBasis, T} =
-    :(convert(T, op.op($((sps[i] !== B && sps[i] <: Bases.Sub? :(sps[$i].state) : :(sps[$i])
+    :(convert(T, op.op($((sps[i] !== B && sps[i] <: Bases.Sub ? :(sps[$i].state) : :(sps[$i])
                           for i = 1:N2)...))))
 @generated applyop(::Type{Val{N2}}, op::Operator{N, B, <:AbstractArray{T, N2}},
                    sps::Vararg{Union{B, SB}, N2}) where
                   {N, N2, B<:AbstractBasis, T, SB<:Bases.Sub{B}} =
-    :(op.op[$((sps[i] !== B && <: Bases.Sub? :(index(sps[$i].state)) : :(index(sps[$i]))
+    :(op.op[$((sps[i] !== B && <: Bases.Sub ? :(index(sps[$i].state)) : :(index(sps[$i]))
                for i = 1:N2)...)])
 
 nbodies(::Type{<:Operator{N}}) where N = N
 nbodies(op::Operator) = nbodies(typeof(op))
 
-tabulate(op) = tabulate(Complex64, op)
+tabulate(op) = tabulate(ComplexF64, op)
 tabulate(::Type, x::Number) = x
 tabulate(::Type, x::AbstractArray) = x
 tabulate(::Type{T}, op::Operator{N, B, <:AbstractArray}) where {T, N, B<:Bases.Index} =
@@ -166,10 +167,10 @@ function (a::RaiseLowerOps)(X::Bases.MaybeSub{<:Bases.Slater})
 end
 
 macro Operator(expr)
-    :(@Operator($(esc(expr)), Complex64, DEFAULT_BASIS))
+    :(@Operator($(esc(expr)), ComplexF64, DEFAULT_BASIS))
 end
 macro Operator(expr::Expr, basis)
-    :(@Operator($(esc(expr)), Complex64, $(esc(basis))))
+    :(@Operator($(esc(expr)), ComplexF64, $(esc(basis))))
 end
 macro Operator(expr::Expr, T, basis)
     @assert expr.head == :(->) && expr.args[1].head == :tuple
@@ -199,8 +200,8 @@ end
 # Add Operator val type?
 @generated Base.zero(::Type{<:Operator{N, B, <:Function, T}}) where
                     {N, B<:AbstractBasis, T} =
-    :(Operator{N, B}(T, (@ntuple($(2N), _) -> zero(T)))
-Base.zero(::Type{<:Operator{N, B, A}}) where A<:AbstractArray =
+    :(Operator{N, B}(T, (@ntuple($(2N), _) -> zero(T))))
+Base.zero(::Type{<:Operator{N, B, A}}) where {N, B<:AbstractBasis, A<:AbstractArray} =
     Operator{N, B, A}(zero(A(fill(dim(B), 2N)...)))
 
 @generated function mask(C::Operator{N, B, A}, slots::Type{Val{S}}...) where
@@ -222,7 +223,7 @@ Base.zero(::Type{<:Operator{N, B, A}}) where A<:AbstractArray =
 end
 
 # TODO
-Base.ctranspose(A::Operator{N, B})
+#Base.ctranspose(A::Operator{N, B})
 
 for op in (:*, :+, :-)
     @eval Base.$op(As::Operator{N, B}) where {N, B<:AbstractBasis} =

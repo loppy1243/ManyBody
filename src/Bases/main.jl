@@ -13,7 +13,7 @@ Base.:(==)(x::B, y::B) where B<:AbstractBasis = index(x) == index(y)
 
 Base.getindex(::Type{B}, ixs...) where B<:AbstractBasis = indexbasis(B, ixs...)
 Base.getindex(::Type{B}, ixs::Array) where B<:AbstractBasis = map(i -> indexbasis(B, i), ixs)
-Base.getindex(::Type{B}, r::Range{Int}) where B<:AbstractBasis = map(i -> indexbasis(B, i), r)
+Base.getindex(::Type{B}, r::AbstractRange{Int}) where B<:AbstractBasis = map(i -> indexbasis(B, i), r)
 
 Base.start(::Type{B}) where B<:AbstractBasis = 1
 Base.next(::Type{B}, st) where B<:AbstractBasis = (B[st], st+1)

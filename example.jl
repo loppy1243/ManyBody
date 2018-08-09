@@ -2,7 +2,7 @@ module Exec
 
 include("src/ManyBody.jl")
 
-using Loppy.Util: cartesian_pow
+using JuliaUtil: cartesian_pow
 using .ManyBody
 
 const LEVEL_SPACING = 1
