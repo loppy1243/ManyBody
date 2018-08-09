@@ -38,3 +38,4 @@ function rlapply()
         @test A(t', r, u, q')(MBBASIS[1]) == (-1, X)
     end
 end; nothing end
+rlapply()

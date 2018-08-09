@@ -37,3 +37,4 @@ function normordtest()
         @test sgn == -1
     end
 end; nothing end
+normordtest()

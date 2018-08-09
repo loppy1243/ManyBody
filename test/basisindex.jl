@@ -10,3 +10,4 @@ function basisindex()
         @test all(b[i] == BASIS[i] for i in indices(BASIS))
     end
 end; end
+basisindex()
