@@ -2,7 +2,7 @@
 export Operator, tabulate, refop, RaiseOp, LowerOp, RaiseLowerOps, A, refop, contract,
        normord, apply_normord_rl, @Operator
 
-using Combinatorics: permutations, levicivita
+using Combinatorics: levicivita
 using Loppy.Util: cartesian_pow
 using ..Bases
 using ..States
@@ -115,24 +115,6 @@ function refop(s::Bases.Slater{B}) where B<:AbstractBasis
     a = RaiseLowerOps{B}(map(x -> RaiseOp{B}(indexp(R, x)), find(s.parts)))
     b = RaiseLowerOps{B}(map(x -> LowerOp{B}(indexh(R, x)), find(s.holes)))
     a*b
-end
-
-contract(::Type, a1::OP, a2::OP) where OP<:RLOp = 0
-contract(::Type{R}, a1::RaiseOp{B}, a2::LowerOp{B}) where {B, R<:RefState{B}} =
-    a1.state == a2.state ? isocc(R, a1.state) : 0
-contract(::Type{R}, a1::LowerOp{B}, a2::RaiseOp{B}) where {B, R<:RefState{B}} =
-    a1.state == a2.state ? ~isocc(R, a1.state) : 0
-contract(::Type, a::RLOp) = 0
-
-function contract(::Type{R}, a::RaiseLowerOps{B}) where {B<:AbstractBasis, R<:RefState{B}}
-    numops = n_ops(a)
-    isodd(numops) && return 0
-
-    sum(permutations(1:numops)) do perm
-        prod(1:div(numops, 2)) do k
-            levicivita(perm)*contract(B, a.ops[perm[2k-1]], a.ops[perm[2k]])
-        end
-    end
 end
 
 normord(a::RaiseLowerOps{B}) where B<:AbstractBasis = normord(RefStates.Vacuum{B}, a)
