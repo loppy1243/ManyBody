@@ -7,47 +7,63 @@ using Suppressor: @suppress_err
 
 struct Bra{S<:AbstractState}; state::S end
 struct Zero <: AbstractState end
-struct State{B<:AbstractBasis, V<:AbstractVector} <: AbstractState
-    vec::V
-    State{B, V}(vec::V) where {B, V} = new(vec)
+struct State{B<:AbstractBasis, A<:AbstractArray} <: AbstractState
+    coeffs::A
+    State{B, A}(coeffs::A) where {B, A} = new(coeffs)
 end
-const VecState{B, T} = State{B, Vector{T}}
-const CVecState{B} = VecState{B, ComplexF64}
+const ArrayState{B<:AbstractBasis, T, N} = State{B, Array{T, N}}
+const CArrayState{B<:AbstractBasis, N} = State{B, Array{ComplexF64, N}}
+const VecState{B<:AbstractBasis, T} = State{B, Array{T, 1}}
+const CVecState{B<:AbstractBasis} = State{B, Array{ComplexF64, 1}}
 
 const ZERO = Zero()
 
-function State{B, V}(x::B) where {B<:AbstractBasis, V<:AbstractVector}
-    v = zero(V(dim(B)))
-    v[index(x)] = oneunit(eltype(V))
-    State{B, V}(v)
+function State{B, A}(x::B) where {B<:AbstractBasis, A<:AbstractArray}
+    coeffs = zero(A(undef, fill(dim(B), ndims(A))))
+    coeffs[CartesianIndex(index(x))] = oneunit(eltype(A))
+    State{B, A}(coeffs)
 end
-State{B}(x) where B = CVecState{B}(x)
 
-dim(x::State) = length(x.vec)
+dim(x::State) = length(x.coeffs)
+rank(x::State) = ndims(x.coeffs)
 
-const MaybeBasis{B<:AbstractBasis, V<:AbstractVector} = Union{B, State{B, V}}
+const MaybeBasis{B<:AbstractBasis, A<:AbstractArray} = Union{B, State{B, A}}
 
 # Add type arg
-@suppress_err Base.vec(x::MaybeBasis{B, V}) where {B, V} = convert(State{B}, x).vec
+@suppress_err Base.vec(x::MaybeBasis{B, A}) where {B, A<:AbstractVector} = convert(State{B}, x).vec
 
 Base.zero(::Type{State{B, V}}) where {B, V} = State{B, V}(zero(V(dim(B))))
 Base.zero(x::State) = typeof(x)(zero(x.vec))
 
-Base.convert(::Type{State{B, V1}}, x::State{B, V2}) where {B, V1, V2} =
-    State{B, V1}(convert(V1, x.vec))
+Base.convert(::Type{State{B, A1}}, x::State{B, A2}) where
+            {B, T, A1<:AbstractArray{<:Any, T}, A2<:AbstractArray{<:Any, T}} =
+    State{B, A1}(convert(A1, x.coeffs))
 Base.convert(::Type{A}, x::B) where {B<:AbstractBasis, A<:State{B}} = A(x)
-Base.convert(::Type{State{B}}, x::State{B}) where B = x
-function Base.convert(::Type{B}, x::State{B}) where B
-    T = eltype(x.vec)
-    nzs = x.vec .!= zero(T)
-    i = findfirst(nzs)
-    cnt = count(zs)
+#Base.convert(::Type{State{B}}, x::State{B}) where B = x
+function Base.convert(::Type{B}, x::State{B, V}) where {B<:AbstractBasis, V<:AbstractVector}
+    T = eltype(x.coeffs)
+    nzs = x.coeffs .!= zero(T)
+    i = findfirst(!iszero, nzs)
+    cnt = count(nzs)
 
-    if cnt != 1 || x.vec[i] != oneunit(T)
+    if cnt != 1 || x.coeffs[i] != oneunit(T)
         throw(InexactError())
     end
 
     B[i]
+end
+function Base.convert(::Type{NTuple{N, B}}, x::State{B, A}) where
+                     {B<:AbstractBasis, A<:AbstractArray{<:Any, N}}
+    T = eltype(x.coeffs)
+    nzs = x.coeffs .!= zero(T)
+    ix = findfirst(!iszero, nzs)
+    cnt = count(nzs)
+
+    if cnt != 1 || x.coeffs[ix] != oneunit(T)
+        throw(InexactError())
+    end
+
+    (map(i -> B[i], convert(Tuple, ix))...)
 end
 
 Base.promote_rule(::Type{SS}, ::Type{SB}) where
@@ -60,36 +76,36 @@ Base.promote_rule(::Type{<:Bases.MaybeSub{B}}, ::Type{S}) where
         function Base.$op(a::$T, b::$T) where B<:AbstractBasis
             a = convert(State{B}, a)
             b = convert(State{B}, b)
-            ret = $op(a.vec, b.vec)
+            ret = $op(a.coeffs, b.coeffs)
 
             State{B, typeof(ret)}(ret)
         end
     end
 end
 
-@suppress_err for T in (:(MaybeBasis{B}), :(Bra{MaybeBasis{B}}))
+@suppress_err for T in (:(MaybeBasis{B}), :(Bra{<:MaybeBasis{B}}))
     @eval begin
         function Base.:*(x::Number, a::$T) where B<:AbstractBasis
             a = convert(State{B}, a)
-            ret = a*vec(a)
+            ret = a*a.coeffs
         
             State{B, typeof(ret)}(ret)
         end
         function Base.:*(a::$T, x::Number) where B<:AbstractBasis
             a = convert(State{B}, a)
-            ret = vec(a)*x
+            ret = coeffs(a)*x
         
             State{B, typeof(ret)}(ret)
         end
         function Base.:/(a::$T, x::Number) where B<:AbstractBasis
             a = convert(State{B}, a)
-            ret = vec(a)/x
+            ret = a.coeffs/x
         
             State{B, typeof(ret)}(ret)
         end
         function Base.:\(x::Number, a::$T) where B<:AbstractBasis
             a = convert(State{B}, a)
-            ret = x \ vec(a)
+            ret = x \ a.coeffs
         
             State{B, typeof(ret)}(ret)
         end
@@ -97,7 +113,7 @@ end
 
         function Base.:-(a::$T) where B<:AbstractBasis
             a = convert(State{B}, a)
-            ret = -a.vec
+            ret = -a.coeffs
             State{B, typeof(ret)}(ret)
         end
     end
@@ -117,7 +133,7 @@ overlap(a::MaybeBasis{B}, b::Bases.Sub{B}) where B<:AbstractBasis = overlap(a, c
 overlap(a::Bases.Sub{B}, b::MaybeBasis{B}) where B<:AbstractBasis = overlap(convert(B, a), b)
 function overlap(a::MaybeBasis{B}, b::MaybeBasis{B}) where B<:AbstractBasis
     a = convert(State{B}, a)
-    a.vec'b.vec
+    a.coeffs'b.coeffs
 end
 
 end # module States

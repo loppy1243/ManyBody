@@ -8,27 +8,24 @@ using JuliaUtil: cartesian_pow
 using ..Bases
 using ..States
 
-abstract type AbstractOperator{N, B<:AbstractBasis} end
-struct ActionOperator{N, B<:AbstractBasis, F<:Function} <: AbastractOperator{N, B}
+abstract type AbstractOperator{N, B<:AbstractBasis, T} end
+struct FunctionOperator{N, B<:AbstractBasis, T, F<:Function} <: AbstractOperator{N, B, T}
     func::F
 end
-struct FunctionOperator{N, B<:AbstractBasis, T, F<:Function} <: AbstractOperator{N, B}
-    func::F
-end
-struct ArrayOperator{N, B<:AbstractBasis, A<:AbstractArray} <: AbstractOperator{N, B}
+struct ArrayOperator{N, B<:AbstractBasis, T, A<:AbstractArray{T}} <: AbstractOperator{N, B, T}
     arr::A
 end
-struct MatrixOperator{N, B<:AbstractBasis, M<:AbstractMatrix} <: AbstractOperator{N, B}
+struct GroupedOperator{N, B<:AbstractBasis, T, M<:AbstractMatrix{T}, F} #=
+    =# <: AbstractOperator{N, B, T}
     mat::M
+    map::F
 end
 FunctionOperator{N, B, T}(f::Function) where {N, B<:AbstractBasis, T} =
-    FunctionOperator{N, B, T, typeof(f)}(f)
-ActionOperator{N, B}(f::Function) where {N, B<:AbstractBasis} =
-    ActionOperator{N, B, typeof(f)}(f)
+    FunctionOperator{N, 
 ArrayOperator{N, B}(a::AbstractArray) where {N, B<:AbstractBasis} =
     ArrayOperator{N, B, typeof(a)}(a)
-MatrixOperator{N, B}(m::AbstractArray) where {N, B<:AbstractBasis} =
-    MatrixOperator{N, B, typeof(m)}(m)
+GroupedOperator{N, B}(m::AbstractMatrix, map) where {N, B<:AbstractBasis} =
+    GroupedOperator{N, B, typeof(m), typeof(ixmap)}(m, map)
 
 #struct Operator{N, B<:AbstractBasis, Op, T}
 #    op::Op
@@ -44,40 +41,90 @@ MatrixOperator{N, B}(m::AbstractArray) where {N, B<:AbstractBasis} =
 #Operator{N, B}(op::AbstractArray) where {N, B<:AbstractBasis} =
 #    Operator{N, B, typeof(op), eltype(T)}(op)
 
-## ???????
-function (op::Operator{N, B})(args::Vararg{<:Any, N}) where {N, B<:AbstractBasis}
-    args::NTuple{N, CVecState{B}} = args
-    ret = Array{ComplexF64}(undef, fill(dim(B), N)...)
-    for X in cartesian_pow(B, Val{N})
-        ret[CartesianIndex(map(index, X))] = sum(cartesian_pow(B, Val{N})) do Y
-            op[X..., Y...]*sum(Y.' .* args)
+Base.eltype(::Type{<:AbstractOperator{<:Any, <:Any, T}}) where T = T
+
+(op::AbstractOperator{N})(::Type{T}, args...)
+(op::AbstractOperator{N})(::Type{T}, args...) where {N, T} = op(Array{T, N}, args...)
+@generated function (op::AbstractOperator{N, B})(::Type{A}, arg::Vararg{Any, N}) where
+                    {N, B<:AbstractBasis, A<:AbstractArray{T, N}}
+    X_syms = [Symbol("X_$i") for i = 1:N]
+    Y_syms = [Symbol("Y_$i") for i = 1:N]
+    quote
+        ret = A(undef, $(fill(dim(B), N)...))
+        @nloops $N X (_ -> B) begin
+            @nloops $N Y (_ -> B) begin
+                @nref($N, ret, d -> index(X_d)) +=
+                    op[$(X_syms...), $(Y_syms...)] * @ncall($N, +, d -> Y_d'args[d])
+            end
         end
+
+        ret
     end
-
-    State{B}(ret)
 end
 
-@generated function (op::Operator{N, B})(args::Vararg{<:Bases.MaybeSub{B}, N2}) where
-                               {N, N2, B<:AbstractBasis, Op, T} =
+@generated function Base.getindex(op::AbstractOperator{N, B}, args::Vararg{B, N2}) where
+                                 {N, N2, B<:AbstractBasis} =
     @assert N2 == 2N
-    :(applyop(Val{$(2N)}, op, $((:(args[$i]) for i=1:N2)...)))
+    :(@ncall($N2, matrixelem, op, i -> args[i]))
 end
 
-nbodies(::Type{<:Operator{N}}) where N = N
-nbodies(op::Operator) = nbodies(typeof(op))
+@generated matrixelem(op::ArrayOperator{N, B}, args::Vararg{B, N2}) where
+                     {N, N2, B<:AbstractBasis} =
+    :(@nref($N2, op.arr, i -> index(args[i])))
+@generated matrixelem(op::FunctionOperator{N, B, T}, args::Vararg{B, N2}) where
+                     {N, N2, T, B<:AbstractBasis} =
+    :(convert(T, @ncall($N2, op.func, i -> args[i])))
+@generated matrixelem(op::GroupedOperator{N, B}, args::Vararg{B, N2}) where
+                     {N, N2, B<:AbstractBasis} = quote
+    i, j = @ncall($N2, groupindex, op.map, i -> args[i])
+    op.mat[i, j]
+end
+@generated groupindex(f::Function, args::Vararg{<:Any, N}) where N =
+    :(@ncall($N, f, i -> args[i]))
+@generated groupindex(a::AbstractArray{<:Any, N}, args::Vararg{<:Any, N}) where N =
+    :(@nref($N, a, i -> index(args[i])))
+
+nbodies(::Type{<:AbstractOperator{N}}) where N = N
+nbodies(op::AbstractOperator) = nbodies(typeof(op))
 
 tabulate(op) = tabulate(ComplexF64, op)
 tabulate(::Type, x::Number) = x
 tabulate(::Type, x::AbstractArray) = x
-tabulate(::Type{T}, op::Operator{N, B, <:AbstractArray}) where {T, N, B<:Bases.Index} =
-    Operator{N, B}(convert(AbstractArray{T}, op.op))
-function tabulate(::Type{T}, op::Operator{N, B}) where {T, N, B<:AbstractBasis}
-    mat = Array{T}(fill(dim(B), 2N)...)
-    for ss in cartesian_pow(B, 2N)
-        mat[CartesianIndex(map(index, ss))] = op(ss...)
+tabulate(::Type{T}, op::ArrayOperator{N, B}) where {T, N, B<:Bases.Index} =
+    ArrayOperator{N, B}(convert(AbstractArray{T}, op.arr))
+tabulate(::Type{T}, op::ArrayOperator{N, B}) where {T, N, B<:AbstractBasis} =
+    ArrayOperator{N, Bases.Index{B}}(convert(AbstractArray{T}, op.arr))
+tabulate(::Type{T}, op::GroupedOperator{N, B}) where {T, N, B<:Bases.Index} =
+    GroupedOperator{N, B}(convert(AbstractMatrix{T}, op.mat), op.map)
+tabulate(::Type{T}, op::GroupedOperator{N, B}) where {T, N, B<:AbstractBasis} =
+    GroupedOperator{N, Bases.Index{B}}(convert(AbstractMatrix{T}, op.mat), op.map)
+@generated function tabulate(::Type{T}, op::AbstractOperator{N, B}) where
+           {T, N, B<:AbstractBasis}
+    quote
+        arr = @ncall($(2N), Array{T}, undef, _ -> dim(B))
+        @nloops $(2N) s (_ -> B) begin
+            @nref($(2N), arr, i -> index(s_i)) = @nref($(2N), op, s)
+        end
+
+        ArrayOperator{N, Bases.Index{B}}(mat)
+    end
+end
+
+@generated group(f, op::ArrayOperator{N, B}) where {N, B<:AbstractBasis} = quote
+    mat = similar(op.arr, dim(B), dim(B))
+    @nloops $(2N) b (_ -> B) begin
+        mat[CartesianIndex(@ncall($(2N), groupindex, f, b))] = @nref($(2N), op, b)
     end
 
-    Operator{N, Bases.Index{B}}(mat)
+    GroupedOperator{N, B}(mat, f)
+end
+@generated ungroup(op::GroupedOperator{N, B}) where {N, B<:AbstractBasis} = quote
+    arr = @ncall($(2N), similar, op.mat, _ -> dim(B))
+    @nloops $(2N) b (_ -> B) begin
+        @nref($(2N), arr, i -> b_i) = mat[CartesianIndex(@ncall($(2N), groupindex, op.map, b))]
+    end
+
+    ArrayOperator{N, B}(arr)
 end
 
 struct Raised{T}; val::T end
@@ -208,7 +255,7 @@ macro Operator(expr::Expr, T, basis)
 
     quote
         x = $(esc(expr))
-        Operator{$nbodies, $(esc(basis))}($(esc(T)), x)
+        FunctionOperator{$nbodies, $(esc(basis)), $(esc(T))}(x)
     end
 end
 
@@ -223,6 +270,19 @@ function Base.show(io::IO, x::RaiseLowerOps)
         print(io, ", $(f(op))")
     end
     print(io, ")")
+end
+@generated Base.show(io::IO, ::MIME"text/plain", x::AbstractOperator) = quote
+    println(typeof(x))
+    show(io, MIME"text/plain"(),
+         $(if x <: FunctionOperator
+               x.func
+           elseif x <: ArrayOperator
+               x.arr
+           elseif x <: MatrixOperator
+               x.mat
+           else
+               "Unknown AbstractOperator"
+           end))
 end
 
 # Add Operator val type?
