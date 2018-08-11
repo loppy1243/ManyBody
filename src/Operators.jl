@@ -44,7 +44,7 @@ Base.eltype(::Type{<:AbstractOperator{<:Any, <:Any, T}}) where T = T
 end
 
 @generated function Base.getindex(op::AbstractOperator{N, B}, args::Vararg{B, N2}) where
-                                 {N, N2, B<:AbstractBasis} =
+                                 {N, N2, B<:AbstractBasis}
     @assert N2 == 2N
     :(@ncall($N2, matrixelem, op, i -> args[i]))
 end
