@@ -10,37 +10,18 @@ using ..States
 
 abstract type AbstractOperator{N, B<:AbstractBasis, T} end
 struct FunctionOperator{N, B<:AbstractBasis, T, F<:Function} <: AbstractOperator{N, B, T}
-    func::F
+    rep::F
 end
-struct ArrayOperator{N, B<:AbstractBasis, T, A<:AbstractArray{T}} <: AbstractOperator{N, B, T}
-    arr::A
-end
-struct GroupedOperator{N, B<:AbstractBasis, T, M<:AbstractMatrix{T}, F} #=
+struct ArrayOperator{N, B<:AbstractBasis, T, A<:AbstractArray{T, N}} #=
     =# <: AbstractOperator{N, B, T}
-    mat::M
-    map::F
+    rep::A
 end
-FunctionOperator{N, B, T}(f::Function) where {N, B<:AbstractBasis, T} =
-    FunctionOperator{N, 
-ArrayOperator{N, B}(a::AbstractArray) where {N, B<:AbstractBasis} =
-    ArrayOperator{N, B, typeof(a)}(a)
-GroupedOperator{N, B}(m::AbstractMatrix, map) where {N, B<:AbstractBasis} =
-    GroupedOperator{N, B, typeof(m), typeof(ixmap)}(m, map)
+FunctionOperator{N, B, T}(f::Function) where {N, B<:AbstracatBasis, T} =
+    FunctionOperator{N, B, T, typeof(f)}(f)
+ArrayOperator{N, B<:AbstractBasis}(a::AbstractArray) where {N, B<:AbstractBasis} =
+    ArrayOperator{N, B, eltype(a), typeof(a)}(a)
 
-#struct Operator{N, B<:AbstractBasis, Op, T}
-#    op::Op
-#
-#    Operator{N, B, Op, T}(op::Op) where {N, B, Op, T} = new(op)
-#    function Operator{N, B, Op, T}(op::Op) where {N, B, T, Op<:AbstractArray}
-#        @assert eltype(Op) == T
-#        new(op)
-#    end
-#end
-#const COperator{N, B<:AbstractBasis, Op} = Operator{N, B, Op, ComplexF64}
-#Operator{N, B}(T, op) where {N, B<:AbstractBasis} = Operator{N, B, typeof(op), T}(op)
-#Operator{N, B}(op::AbstractArray) where {N, B<:AbstractBasis} =
-#    Operator{N, B, typeof(op), eltype(T)}(op)
-
+rep(op::AbstractOperator) = op.rep
 Base.eltype(::Type{<:AbstractOperator{<:Any, <:Any, T}}) where T = T
 
 (op::AbstractOperator{N})(::Type{T}, args...)
