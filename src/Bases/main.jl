@@ -86,7 +86,7 @@ include("mbbasis.jl")
 end
 
 Base.convert(::Type{B}, s::Sub{Index{B}}) where B<:AbstractBasis = convert(B, s.state)
-Base.convert(::Type{B}, s::Index{SB}) where SB<:SubBasis{B} = convert(B, SB[index(s)])
+Base.convert(::Type{B}, s::Index{SB}) where SB<:Sub{B} = convert(B, SB[index(s)])
 function Base.convert(::Type{V}, s::AbstractBasis) where V<:AbstractVector
     ret = V(undef, dim(typeof(s)))
     ret .= zero(eltype(V))
