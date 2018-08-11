@@ -12,9 +12,42 @@ abstract type AbstractBasis <: AbstractState end
 Base.:(==)(x::AbstractBasis, y::AbstractBasis) = false
 Base.:(==)(x::B, y::B) where B<:AbstractBasis = index(x) == index(y)
 
-Base.getindex(::Type{B}, ixs...) where B<:AbstractBasis = indexbasis(B, ixs...)
-Base.getindex(::Type{B}, ixs::Array) where B<:AbstractBasis = map(i -> indexbasis(B, i), ixs)
-Base.getindex(::Type{B}, r::AbstractRange{Int}) where B<:AbstractBasis = map(i -> indexbasis(B, i), r)
+abstract type Generation end
+struct Provided <: Generation end
+struct Generated <: Generation end
+struct Computed <: Generation end
+Generation(::Type{<:AbstractBasis}) = Computed()
+
+struct BasisProvidedException <: Exception end
+macro generate(T)
+    T_esc = esc(T)
+    quote
+        g = Generation($T_esc)
+        if g === Provided()
+            throw(BasisProvidedException())
+        elseif g === Generated()
+            basis($T_esc)
+        elseif g == Computed()
+            @eval Generation(::Type{$T_esc}) = Generated()
+            basis($T_esc)
+        end
+        nothing
+    end
+end
+
+basis(::Type{B}) = _basis(B, Generation(B))
+basis(::Type{B}, ::Computed) where B<:AbstractBasis = B[1:dim(B)]
+@generated basis(::Type{B}, ::Generated) where B<:AbstractBasis =
+    map(i -> indexbasis(B, i), 1:dim(B))
+
+Base.getindex(::Type{B}, i) where B<:AbstractBasis = _getindex(B, Generation(B), i)
+_getindex(::Type{B}, ::Computed, i) where B<:AbstractBasis = indexbasis(B, i)
+_getindex(::Type{B}, ::Computed, ixs::Array) where B<:AbstractBasis =
+    map(i -> indexbasis(B, i), ixs)
+_getindex(::Type{B}, ::Computed, r::AbstractRange{Int}) where B<:AbstractBasis =
+    map(i -> indexbasis(B, i), r)
+_getindex(::Type{B}, ::Union{Generated, Provided}, ixs...) = basis(B)[ixs...]
+
 Base.firstindex(::Type{B}) where B<:AbstractBasis = 1
 Base.lastindex(::Type{B}) where B<:AbstractBasis = dim(B)
 
@@ -24,8 +57,6 @@ Base.IteratorEltype(::Type{B}) where B<:AbstractBasis = Base.HasEltype()
 
 Base.length(::Type{B}) where B<:AbstractBasis = dim(B)
 Base.eltype(::Type{B}) where B<:AbstractBasis = B
-
-basis(::Type{B}) where B<:AbstractBasis = B[1:dim(B)]
 
 include("indexbasis.jl")
 include("subbasis.jl")
