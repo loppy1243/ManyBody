@@ -34,7 +34,7 @@ function get_free_tys(tys, x::Expr)
 
     ret
 end
-macro defSubBasis(ty_expr::Expr, expr)
+macro defSub(ty_expr::Expr, expr)
     @assert ty_expr.head == :(<:)
 
     name(x::Symbol) = x

@@ -65,7 +65,7 @@ include("pairing.jl")
 include("refstates.jl")
 include("mbbasis.jl")
 
-@defSubBasis Paired{F, L} <: Slater{Pairing{L}} begin
+@defSub Paired{F, L} <: Slater{Pairing{L}} begin
     SP = Pairing{L}
     ref = Slater{SP}(SP(l, s) for l = 1:F, s in SPINS)
 
