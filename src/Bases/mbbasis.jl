@@ -24,7 +24,7 @@ Base.:(==)(s1::MB, s2::MB) where MB<:Slater = s1.bits == s2.bits
 Base.in(p::B, s::Slater{B}) where B = s.bits[index(p)]
 Base.in(p::B, s::Sub{Slater{B}}) where B = p in s.state
 
-index(s::Slater) = sum(s.bits[i]*2^(i-1) for i in indices(s.bits, 1))
+index(s::Slater) = sum(s.bits[i]*2^(i-1) for i in eachindex(s.bits))
 function indexbasis(::Type{Slater{B}}, ix::Int) where B 
     d = dim(B)
     states = falses(d)
