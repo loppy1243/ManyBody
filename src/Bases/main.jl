@@ -1,9 +1,10 @@
 @reexport module Bases
-export RefStates, AbstractState, AbstractBasis, RefState, overlap
+export RefStates, AbstractState, AbstractBasis, RefState, overlap, Bra, ZeroState
 # Basis interface
 export basis, index, indexbasis, dim
 
 using ..AbstractState
+using Base.Cartesian: @ncall
 using LinearAlgebra: Adjoint
 using Combinatorics: combinations
 using Reexport: @reexport
@@ -19,26 +20,27 @@ struct Generated <: Generation end
 struct Computed <: Generation end
 Generation(::Type{<:AbstractBasis}) = Computed()
 
-struct BasisProvidedException <: Exception end
-macro generate(T)
-    T_esc = esc(T)
-    quote
-        g = Generation($T_esc)
-        if g === Provided()
-            throw(BasisProvidedException())
-        elseif g === Generated()
-            basis($T_esc)
-        elseif g == Computed()
-            @eval Generation(::Type{$T_esc}) = Generated()
-            basis($T_esc)
-        end
-        nothing
-    end
-end
+## Doesn't appear to be needed nor easy to implement
+#struct BasisProvidedException <: Exception end
+#macro generate(T)
+#    T_esc = esc(T)
+#    quote
+#        g = Generation($T_esc)
+#        if g === Provided()
+#            throw(BasisProvidedException())
+#        elseif g === Generated()
+#            basis($T_esc)
+#        elseif g == Computed()
+#            @eval Generation(::Type{$T}) = Generated()
+#            basis($T_esc)
+#        end
+#        nothing
+#    end
+#end
 
 basis(::Type{B}) where B<:AbstractBasis = _basis(B, Generation(B))
-basis(::Type{B}, ::Computed) where B<:AbstractBasis = B[1:dim(B)]
-@generated basis(::Type{B}, ::Generated) where B<:AbstractBasis =
+_basis(::Type{B}, ::Computed) where B<:AbstractBasis = B[1:dim(B)]
+@generated _basis(::Type{B}, ::Generated) where B<:AbstractBasis =
     map(i -> indexbasis(B, i), 1:dim(B))
 
 Base.getindex(::Type{B}, i) where B<:AbstractBasis = _getindex(B, Generation(B), i)
@@ -105,15 +107,67 @@ function Base.convert(::Type{B}, v::AbstractVector) where B<:AbstractBasis
     B[i]
 end
 
-
 struct Bra{S}; state::S end
-struct Zero end
+struct ZeroState end
+
+Base.Vector{T}(b::AbstractBasis) where T = convert(Vector{T}, b)
+Base.Vector(b::AbstractBasis) where T = convert(Vector, b)
+
+Base.adjoint(b::AbstractBasis) = Bra(b)
+Base.adjoint(b::Bra) = b.state
 
 Base.:*(a::Bra{B}, b::B) where B<:AbstractBasis = a == b
-Base.:*(::Bra{Zero}, ::Union{<:AbstractVector, <:AbstractBasis}) = 0
-Base.:*(::Union{<:Adjoint{<:Any, <:AbstractVector}, Bra{<:AbstractBasis}}, ::Zero) = 0
-Base.:*(::Bra{Zero}, ::Zero) = 0
+Base.:*(::Bra{ZeroState}, ::Union{<:AbstractVector, <:AbstractBasis}) = 0
+Base.:*(::Union{<:Adjoint{<:Any, <:AbstractVector}, Bra{<:AbstractBasis}}, ::ZeroState) = 0
+Base.:*(::Bra{ZeroState}, ::ZeroState) = 0
 Base.:*(a::Bra{<:AbstractBasis}, b::AbstractVector) = b[index(a)]
 Base.:*(a::Adjoint{<:Any, <:AbstractVector}, b::AbstractBasis) = conj(b[index(a)])
+
+## OMG this worked. Please add actual tests.
+@generated function Base.:*(xs::Vararg{Union{AbstractArray, AbstractBasis}})
+    numdims = sum(xs) do x
+        if x <: AbstractArray
+            ndims(x)
+        else
+            1
+        end
+    end
+    dim_exprs = map(enumerate(xs)) do X
+        k, x = X
+        if x <: AbstractArray
+            Expr(:..., :(size(xs[$k])))
+        else
+            :(dim(typeof(xs[$k])))
+        end
+    end
+
+    i = 1
+    j = 1
+    exprs = map(enumerate(xs)) do X
+        k, x = X
+        if x <: AbstractArray
+            ret = :(xs[k][CartesianIndex(J[$(i:i+ndims(x)-1)])])
+            i += ndims(x)
+            ret
+        else
+            ret = :(J[$i] == ixs[$j])
+            j += 1
+            i += 1
+            ret
+        end
+    end
+
+    ixs_expr = [:(index(xs[$k])) for k in 1:lastindex(xs) if xs[k] <: AbstractBasis]
+
+    quote
+        ixs = [$(ixs_expr...)]
+        ret = zeros($(dim_exprs...))
+        for I in CartesianIndices(ret)
+            J = Tuple(I)
+            ret[I] = *($(exprs...))
+        end
+        ret
+    end
+end
 
 end # module States
