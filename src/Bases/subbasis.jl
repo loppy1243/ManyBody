@@ -13,7 +13,7 @@ Base.:(==)(x::SB, y::SB) where SB<:Sub = x.state == y.state
 Base.promote_rule(::Type{<:Sub{B}}, ::Type{B}) where B<:AbstractBasis = B
 
 dim(::Type{SB}) where SB<:Sub = length(basis(SB))
-index(x::Sub) = findfirst(basis(typeof(x)), x)
+index(x::Sub) = findfirst(isequal(x), basis(typeof(x)))
 indexbasis(::Type{SB}, i) where {B, SB<:Sub{B}} = basis(SB)[i]
 
 get_tys(s::Symbol) = [s]
