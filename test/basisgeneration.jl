@@ -9,9 +9,8 @@ generate_macro(BASIS) = @testset "Bases.@generate" begin
 end
 
 @testset "Basis Generation" begin
-    BASIS = BASES.Pairing{4}
-
+    BASIS = Bases.Pairing{4}
     computed_default(BASIS)
-    Bases.@generate BASIS
+    Bases.Generation(::Type{BASIS}) = Bases.Generated()
     generate_macro(BASIS)
 end
