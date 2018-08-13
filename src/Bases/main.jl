@@ -4,6 +4,7 @@ export RefStates, AbstractState, AbstractBasis, RefState, overlap
 export basis, index, indexbasis, dim
 
 using ..AbstractState
+using LinearAlgebra: Adjoint
 using Combinatorics: combinations
 using Reexport: @reexport
 
