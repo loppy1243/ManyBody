@@ -1,46 +1,68 @@
 @reexport module Operators
-export Operator, tabulate, refop, RaiseOp, LowerOp, RaiseLowerOps, A, refop, contract,
-       normord, apply_normord_rl, @Operator
+export AbstractOperator, FunctionOperator, CFunctionOperator, ArrayOperator, tabulate, refop,
+       RaiseOp, LowerOp, RaiseLowerOps, A, refop, contract, normord 
 
 using Base.Cartesian
 using Combinatorics: levicivita
 using JuliaUtil: cartesian_pow
 using ..Bases
-using ..States
 
 abstract type AbstractOperator{N, B<:AbstractBasis, T} end
-struct FunctionOperator{N, B<:AbstractBasis, T, F<:Function} <: AbstractOperator{N, B, T}
+struct FunctionOperator{N, B<:AbstractBasis, T, F<:Function} #=
+    =# <: AbstractOperator{N, B, T}
     rep::F
 end
-struct ArrayOperator{N, B<:AbstractBasis, T, A<:AbstractArray{T, N}} #=
+const CFunctionOperator{N, B<:AbstractBasis} = FunctionOperator{N, B, ComplexF64}
+struct ArrayOperator{N, B<:AbstractBasis, T, A<:AbstractArray{T}} #=
     =# <: AbstractOperator{N, B, T}
     rep::A
+
+    function ArrayOperator{N, B, T, A}(rep::A) where
+                                      {N, B<:AbstractBasis, T, A<:AbstractArray{T}}
+        @assert ndims(rep) == 2N
+        new(rep)
+    end
 end
-FunctionOperator{N, B, T}(f::Function) where {N, B<:AbstracatBasis, T} =
+FunctionOperator{N, B, T}(f::Function) where {N, B<:AbstractBasis, T} =
     FunctionOperator{N, B, T, typeof(f)}(f)
-ArrayOperator{N, B<:AbstractBasis}(a::AbstractArray) where {N, B<:AbstractBasis} =
+function ArrayOperator{N, B, T, A}(a::AbstractArray) where
+                                  {N, B<:AbstractBasis, T, A<:AbstractArray{T}}
+    a = convert(A, a)
+    ArrayOperator{N, B, T, A}(a)
+end
+function ArrayOperator{N, B, T}(a::AbstractArray) where {N, B<:AbstractBasis, T}
+    a = convert(AbstractArray{T}, a)
+    ArrayOperator{N, B, T, typeof(a)}(a)
+end
+ArrayOperator{N, B}(a::AbstractArray) where {N, B<:AbstractBasis} =
     ArrayOperator{N, B, eltype(a), typeof(a)}(a)
+function ArrayOperator(B::AbstractBasis, a::AbstractArray)
+    @assert iseven(ndims(a))
+    ArrayOperator{div(ndims(a), 2), B, eltype(a), typeof(a)}(a)
+end
 
 rep(op::AbstractOperator) = op.rep
 Base.eltype(::Type{<:AbstractOperator{<:Any, <:Any, T}}) where T = T
 
-(op::AbstractOperator{N})(::Type{T}, args...)
-(op::AbstractOperator{N})(::Type{T}, args...) where {N, T} = op(Array{T, N}, args...)
-@generated function (op::AbstractOperator{N, B})(::Type{A}, arg::Vararg{Any, N}) where
-                    {N, B<:AbstractBasis, A<:AbstractArray{T, N}}
-    X_syms = [Symbol("X_$i") for i = 1:N]
-    Y_syms = [Symbol("Y_$i") for i = 1:N]
-    quote
-        ret = A(undef, $(fill(dim(B), N)...))
-        @nloops $N X (_ -> B) begin
-            @nloops $N Y (_ -> B) begin
-                @nref($N, ret, d -> index(X_d)) +=
-                    op[$(X_syms...), $(Y_syms...)] * @ncall($N, +, d -> Y_d'args[d])
-            end
-        end
-
-        ret
+## For now, this does not work
+#(op::AbstractOperator{N, <:Any, T})(args...) where {N, T} = op(Array{T, N}, args...)
+## Work around
+(op::FunctionOperator{N, <:Any, T})(args...) where {N, T} = op(Array{T, N}, args...)
+(op::ArrayOperator{N, <:Any, T})(args...) where {N, T} = op(Array{T, N}, args...)
+@generated (op::FunctionOperator{N, B, T})(args::Vararg{B, N}) where
+                                          {N, B<:AbstractBasis, T, A<:AbstractArray{T, N}} =
+    :(@ncall($N, rep(op), i -> args[i]))
+(op::FunctionOperator{N, B, T})(::Type{A}, args::Vararg{B, N}) where
+                               {N, B<:AbstractBasis, T, A<:AbstractArray{T, N}} =
+    convert(A, op(args...))
+@generated (op::FunctionOperator{N, B})(::Type{A}, state::AbstractArray{<:Any, N}) where
+                                       {N, B<:AbstractBasis, T, A<:AbstractArray{T, N}} = quote
+    ret = similar(A, $(fill(dim(B), N)...))
+    @nloops $N b (_ -> B) begin
+        @nref($N, ret, i -> index(b_i)) = @nref($N, state, i -> index(b_i))*@ncall($N, rep(op), b)
     end
+
+    ret
 end
 
 @generated function Base.getindex(op::AbstractOperator{N, B}, args::Vararg{B, N2}) where
@@ -51,61 +73,31 @@ end
 
 @generated matrixelem(op::ArrayOperator{N, B}, args::Vararg{B, N2}) where
                      {N, N2, B<:AbstractBasis} =
-    :(@nref($N2, op.arr, i -> index(args[i])))
-@generated matrixelem(op::FunctionOperator{N, B, T}, args::Vararg{B, N2}) where
+    :(@nref($N2, rep(op), i -> index(args[i])))
+@generated matrixelem(op::AbstractOperator{N, B, T}, args::Vararg{B, N2}) where
                      {N, N2, T, B<:AbstractBasis} =
-    :(convert(T, @ncall($N2, op.func, i -> args[i])))
-@generated matrixelem(op::GroupedOperator{N, B}, args::Vararg{B, N2}) where
-                     {N, N2, B<:AbstractBasis} = quote
-    i, j = @ncall($N2, groupindex, op.map, i -> args[i])
-    op.mat[i, j]
-end
-@generated groupindex(f::Function, args::Vararg{<:Any, N}) where N =
-    :(@ncall($N, f, i -> args[i]))
-@generated groupindex(a::AbstractArray{<:Any, N}, args::Vararg{<:Any, N}) where N =
-    :(@nref($N, a, i -> index(args[i])))
+    :(convert(T, prod(args[1:$N])'*@ncall($N, op, i -> args[$N+i])))
 
 nbodies(::Type{<:AbstractOperator{N}}) where N = N
 nbodies(op::AbstractOperator) = nbodies(typeof(op))
 
-tabulate(op) = tabulate(ComplexF64, op)
-tabulate(::Type, x::Number) = x
-tabulate(::Type, x::AbstractArray) = x
-tabulate(::Type{T}, op::ArrayOperator{N, B}) where {T, N, B<:Bases.Index} =
-    ArrayOperator{N, B}(convert(AbstractArray{T}, op.arr))
-tabulate(::Type{T}, op::ArrayOperator{N, B}) where {T, N, B<:AbstractBasis} =
-    ArrayOperator{N, Bases.Index{B}}(convert(AbstractArray{T}, op.arr))
-tabulate(::Type{T}, op::GroupedOperator{N, B}) where {T, N, B<:Bases.Index} =
-    GroupedOperator{N, B}(convert(AbstractMatrix{T}, op.mat), op.map)
-tabulate(::Type{T}, op::GroupedOperator{N, B}) where {T, N, B<:AbstractBasis} =
-    GroupedOperator{N, Bases.Index{B}}(convert(AbstractMatrix{T}, op.mat), op.map)
-@generated function tabulate(::Type{T}, op::AbstractOperator{N, B}) where
-           {T, N, B<:AbstractBasis}
+tabulate(op) = tabulate(Array{ComplexF64}, op)
+tabulate(::Type{A}, x::Number) where A<:AbstractArray = convert(eltype(A), x)
+tabulate(::Type{A}, x::AbstractArray) where A<:AbstractArray = convert(A, x)
+tabulate(::Type{A}, op::ArrayOperator{N, B}) where {A<:AbstractArray, N, B<:Bases.Index} =
+    ArrayOperator{N, B}(convert(A, rep(op)))
+tabulate(::Type{A}, op::ArrayOperator{N, B}) where {A<:AbstractArray, N, B<:AbstractBasis} =
+    ArrayOperator{N, Bases.Index{B}}(convert(A, rep(op)))
+@generated function tabulate(::Type{A}, op::AbstractOperator{N, B}) where
+                            {A<:AbstractArray, N, B<:AbstractBasis}
     quote
-        arr = @ncall($(2N), Array{T}, undef, _ -> dim(B))
+        arr = similar(A, $(fill(dim(B), 2N)...))
         @nloops $(2N) s (_ -> B) begin
             @nref($(2N), arr, i -> index(s_i)) = @nref($(2N), op, s)
         end
 
-        ArrayOperator{N, Bases.Index{B}}(mat)
+        ArrayOperator{N, Bases.Index{B}}(arr)
     end
-end
-
-@generated group(f, op::ArrayOperator{N, B}) where {N, B<:AbstractBasis} = quote
-    mat = similar(op.arr, dim(B), dim(B))
-    @nloops $(2N) b (_ -> B) begin
-        mat[CartesianIndex(@ncall($(2N), groupindex, f, b))] = @nref($(2N), op, b)
-    end
-
-    GroupedOperator{N, B}(mat, f)
-end
-@generated ungroup(op::GroupedOperator{N, B}) where {N, B<:AbstractBasis} = quote
-    arr = @ncall($(2N), similar, op.mat, _ -> dim(B))
-    @nloops $(2N) b (_ -> B) begin
-        @nref($(2N), arr, i -> b_i) = mat[CartesianIndex(@ncall($(2N), groupindex, op.map, b))]
-    end
-
-    ArrayOperator{N, B}(arr)
 end
 
 struct Raised{T}; val::T end
@@ -198,7 +190,8 @@ function normord(::Type{R}, a::RaiseLowerOps{B}) where {B<:AbstractBasis, R<:Ref
     return (levicivita(p), RaiseLowerOps(a.ops[p]))
 end
 
-function (a::RaiseLowerOps)(X::Bases.MaybeSub{<:Bases.Slater})
+@generated (a::RaiseLowerOps)(X::Bases.MaybeSub{<:Bases.Slater}) = quote
+    z = zero(Vector(X))
     Y = deepcopy(convert(Bases.Slater, X))
     B = typeof(Y)
 
@@ -206,38 +199,31 @@ function (a::RaiseLowerOps)(X::Bases.MaybeSub{<:Bases.Slater})
     for i = length(a.ops):-1:1
         sgn *= if a.ops[i] isa RaiseOp
             if a.ops[i].state in Y
-                return (0, States.Zero())
+                return ZeroState()
             else
                 create!(Y, a.ops[i].state)
             end
         else
             if !(a.ops[i].state in Y)
-                return (0, States.Zero())
+                return ZeroState()
             else
                 annihil!(Y, a.ops[i].state)
             end
         end
     end
 
-    return (sgn, Y)
-end
-
-macro Operator(expr)
-    :(@Operator($(esc(expr)), ComplexF64, DEFAULT_BASIS))
-end
-macro Operator(expr::Expr, basis)
-    :(@Operator($(esc(expr)), ComplexF64, $(esc(basis))))
-end
-macro Operator(expr::Expr, T, basis)
-    @assert expr.head == :(->) && expr.args[1].head == :tuple
-    nbodies2 = length(expr.args[1].args)
-    @assert iseven(nbodies2)
-    nbodies = div(nbodies2, 2)
-
-    quote
-        x = $(esc(expr))
-        FunctionOperator{$nbodies, $(esc(basis)), $(esc(T))}(x)
-    end
+    # Probably a better way to do this.
+    $(if X <: Bases.Sub
+          quote
+              Z = convert(typeof(X), Y)
+              if Z in typeof(X)
+                  Y = Z
+              end
+          end
+      else
+          :()
+      end)
+    sgn == 1 ? Y : sgn*Y
 end
 
 Base.show(io::IO, x::RaiseOp) = print(io, "A($(x.state)')")
@@ -252,62 +238,46 @@ function Base.show(io::IO, x::RaiseLowerOps)
     end
     print(io, ")")
 end
-@generated Base.show(io::IO, ::MIME"text/plain", x::AbstractOperator) = quote
+function Base.show(io::IO, mime::MIME"text/plain", x::AbstractOperator)
     println(typeof(x))
-    show(io, MIME"text/plain"(),
-         $(if x <: FunctionOperator
-               x.func
-           elseif x <: ArrayOperator
-               x.arr
-           elseif x <: MatrixOperator
-               x.mat
-           else
-               "Unknown AbstractOperator"
-           end))
+    show(io, mime, rep(x))
 end
 
 # Add Operator val type?
-@generated Base.zero(::Type{<:Operator{N, B, <:Function, T}}) where
+@generated Base.zero(::Type{<:FunctionOperator{N, B, T}}) where
                     {N, B<:AbstractBasis, T} =
-    :(Operator{N, B}(T, (@ntuple($(2N), _) -> zero(T))))
-Base.zero(::Type{<:Operator{N, B, A}}) where {N, B<:AbstractBasis, A<:AbstractArray} =
-    Operator{N, B, A}(zero(A(fill(dim(B), 2N)...)))
+    :(FunctionOperator{N, B, T}((@ntuple($N, _) -> zeros(T, $(fill(dim(B), N)...)))))
+@generated Base.zero(::Type{<:ArrayOperator{N, B, <:Any, A}}) where
+                    {N, B<:AbstractBasis, A<:AbstractArray} =
+    :(ArrayOperator{N, B}(zero(similar(A, $(fill(dim(B), 2N)...)))))
 
-@generated function mask(C::Operator{N, B, A}, slots::Type{Val{S}}...) where
-                        {N, S, B<:AbstractBasis, A<:AbstractArray}
-    z = zero(eltype(A))
-    id = one(eltype(A))
-
-    refexpr(pos, sym) = if pos
-        :(@nref($(2N), C.op, i) *= isocc(B[$sym]) ? $z : $id)
-    else
-        :(@nref($(2N), C.op, i) *= ~isocc(B[$sym]) ? $z : $id)
-    end
-
-    quote
-        @nloops $(2N) i C.op begin
-            $((refexpr(slot > 0, Symbol("i_"*string(slot))) for slot in slots)...)
-        end
-    end
-end
-
-# TODO
-#Base.adjoint(A::Operator{N, B})
+#@generated Base.adjoint(op::FunctionOperator{N, B, T}) where {N, B<:AbstractBasis, T} =
+#    :(FunctionOperator{N, B, T}(@ntuple($N, b) ->
+#                                    conj.(permutedims(@ncall($N, rep(op), b), $N:-1:1))))
+Base.adjoint(op::ArrayOperator{N, B}) where {N, B<:AbstractBasis} =
+    ArrayOperator{N, B}(conj.(permutedims(rep(op), 2N:-1:1)))
 
 for op in (:*, :+, :-)
-    @eval Base.$op(As::Operator{N, B}) where {N, B<:AbstractBasis} =
-        Operator{N, B}($op(map(A -> A.op, As)...))
-    @eval Base.$op(As::Operator{N, B, <:Function}) where
-                  {N, B<:AbstractBasis} =
-        Operator{N, B}((args...) -> $op(map(A -> A.op(args...), As)...))
+    @eval Base.$op(As::ArrayOperator{N, B}...) where {N, B<:AbstractBasis} =
+        ArrayOperator{N, B}($op(map(A -> rep(A), As)...))
+    ## Should allow different T's...
+    @eval Base.$op(As::FunctionOperator{N, B, T}...) where {N, B<:AbstractBasis, T} =
+        FunctionOperator{N, B, T}((args...) -> $op(map(A -> rep(A)(args...), As)...))
 end
 for op in (:*, :\)
-    @eval Base.$op(x::Number, A::Operator{N, B}) where {N, B<:AbstractBasis} =
-        Operator{N, B}($op(x, A.op))
+    @eval Base.$op(x::Number, A::ArrayOperator{N, B}) where {N, B<:AbstractBasis} =
+        ArrayOperator{N, B}($op(x, rep(A)))
+    ## Should allow different T's...
+    @eval Base.$op(x::Number, A::FunctionOperator{N, B, T}) where {N, B<:AbstractBasis, T} =
+        FunctionOperator{N, B, T}((args...) -> $op(x, rep(op)(args...)))
+        
 end
 for op in (:*, :/)
-    @eval Base.$op(A::Operator{N, B}, x::Number) where {N, B<:AbstractBasis} =
-        Operator{N, B}($op(A.op, x))
+    @eval Base.$op(A::ArrayOperator{N, B}, x::Number) where {N, B<:AbstractBasis} =
+        ArrayOperator{N, B}($op(rep(A), x))
+    ## Should allow different T's...
+    @eval Base.$op(A::FunctionOperator{N, B, T}, x::Number) where {N, B<:AbstractBasis, T} =
+        FunctionOperator{N, B, T}((args...) -> $op(rep(A)(args...), x))
 end
 
 end # module Operators
