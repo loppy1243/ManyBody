@@ -147,7 +147,14 @@ Base.:+(a::AbstractBasis) = a
 Base.:-(a::AbstractBasis) = -Vector(a)
 
 Base.promote_rule(::Type{V}, ::Type{<:AbstractBasis}) where {V<:AbstractVector} = V
-Base.promote_rule(::Type{<:Sub{B}}, ::Type{B}) where B<:AbstractBasis = B
+
+Base.:(==)(a::AbstractArray, ::ZeroState) = all(iszero, a)
+Base.:(==)(::ZeroState, b::AbstractArray) = all(iszero, b)
+function Base.:(==)(a::AbstractBasis, b::AbstractVector)
+    i = index(a)
+    b[i] == oneunit(eltype(b)) && all(iszero(b[k]) for k in eachindex(b) if k != i)
+end
+Base.:(==)(a::AbstractVector, b::AbstractBasis) = b == a
 
 ## OMG this worked. Please add actual tests.
 @generated function Base.:*(xs::Vararg{Union{AbstractArray, AbstractBasis}})
