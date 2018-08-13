@@ -1,5 +1,5 @@
 @reexport module Bases
-export RefStates, AbstractState, AbstractBasis, RefState, overlap, Bra, ZeroState
+export RefStates, AbstractState, AbstractBasis, RefState, Bra, ZeroState
 # Basis interface
 export basis, index, indexbasis, dim
 
@@ -111,7 +111,7 @@ struct Bra{S}; state::S end
 struct ZeroState end
 
 Base.Vector{T}(b::AbstractBasis) where T = convert(Vector{T}, b)
-Base.Vector(b::AbstractBasis) where T = convert(Vector, b)
+Base.Vector(b::AbstractBasis) where T = convert(Vector{ComplexF64}, b)
 
 Base.adjoint(b::AbstractBasis) = Bra(b)
 Base.adjoint(b::Bra) = b.state
@@ -122,6 +122,32 @@ Base.:*(::Union{<:Adjoint{<:Any, <:AbstractVector}, Bra{<:AbstractBasis}}, ::Zer
 Base.:*(::Bra{ZeroState}, ::ZeroState) = 0
 Base.:*(a::Bra{<:AbstractBasis}, b::AbstractVector) = b[index(a)]
 Base.:*(a::Adjoint{<:Any, <:AbstractVector}, b::AbstractBasis) = conj(b[index(a)])
+
+for op in (:*, :/)
+    @eval Base.$op(a::Number, b::AbstractBasis) = $op(a, Vector{typeof(a)}(b))
+    @eval Base.$op(::Number, ::ZeroState) = ZeroState()
+end
+for op in (:*, :\)
+    @eval Base.$op(a::AbstractBasis, b::Number) = $op(Vector{typeof(a)}(a), b)
+    @eval Base.$op(::ZeroState, ::Number) = ZeroState()
+end
+
+for op in (:+, :-); @eval begin
+    Base.$op(a::Union{<:AbstractArray, <:AbstractBasis}, ::ZeroState) = a
+    Base.$op(::ZeroState, b::Union{<:AbstractArray, <:AbstractBasis}) = $op(b)
+    Base.$op(::ZeroState, ::ZeroState) = ZeroState()
+
+    Base.$op(a::B, b::B) where B<:AbstractBasis = $op(Vector(a), Vector(b))
+    Base.$op(a::AbstractVector, b::AbstractBasis) = $op(a, convert(typeof(a), b))
+    Base.$op(a::AbstractBasis, b::AbstractVector) = $op(convert(typeof(b), a), b)
+    Base.$op(a::B, b::Sub{B}) where B<:AbstractBasis = $op(Vector(a), Vector(convert(B, b)))
+    Base.$op(a::Sub{B}, b::B) where B<:AbstractBasis = $op(Vector(convert(B, a)), Vector(b))
+end; end
+Base.:+(a::AbstractBasis) = a
+Base.:-(a::AbstractBasis) = -Vector(a)
+
+Base.promote_rule(::Type{V}, ::Type{<:AbstractBasis}) where {V<:AbstractVector} = V
+Base.promote_rule(::Type{<:Sub{B}}, ::Type{B}) where B<:AbstractBasis = B
 
 ## OMG this worked. Please add actual tests.
 @generated function Base.:*(xs::Vararg{Union{AbstractArray, AbstractBasis}})
