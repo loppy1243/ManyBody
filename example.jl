@@ -2,13 +2,22 @@ module Exec
 
 include("src/ManyBody.jl")
 
+using Combinatorics: combinations
 using JuliaUtil: cartesian_pow
 using .ManyBody
+
+Bases.@defSub NPairing{L, P} <: Bases.Slater{Bases.Pairing{L}} begin
+    SP = Bases.Pairing{L}
+    MB = Bases.Slater{SP}
+
+    [MB(sps) for sps in combinations(SP, P)]
+end
 
 const LEVEL_SPACING = 1
 const SPBASIS = Bases.Pairing{4}
 const REFSTATE = RefStates.Fermi{2, SPBASIS}
-const MBBASIS = Bases.Paired{2, 4}
+#const MBBASIS = Bases.Paired{2, 4}
+const MBBASIS = NPairing{4, 4}
 
 f(g) = F64ActionOperator{1, MBBASIS}() do X
     sum(SPBASIS) do p

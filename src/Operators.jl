@@ -127,10 +127,8 @@ tabulate(::Type{A}, op::ArrayOperator{N, B}) where {A<:AbstractArray, N, B<:Abst
 #    end
 #end
 function tabulate(::Type{A}, op::AbstractOperator) where {A<:AbstractArray}
-    println(basistype(op))
-    println(Bases.Generation(basistype(op)))
     arr = similar(A, fill(dim(basistype(op)), 2nbodies(op))...)
-    for S in cartesian_pow(B, Val{2nbodies(op)})
+    for S in cartesian_pow(basistype(op), Val{2nbodies(op)})
         arr[CartesianIndex(map(index, S))] = op[S...]
     end
 
