@@ -8,8 +8,7 @@ using JuliaUtil: cartesian_pow
 using ..Bases
 
 abstract type AbstractOperator{N, B<:AbstractBasis, T} end
-struct ActionOperator{N, B<:AbstractBasis, T, F<:Function} #=
-    =# <: AbstractOperator{N, B, T}
+struct ActionOperator{N, B<:AbstractBasis, T, F<:Function} <: AbstractOperator{N, B, T}
     rep::F
 end
 const CF64ActionOperator{N, B<:AbstractBasis} = ActionOperator{N, B, ComplexF64}
@@ -18,8 +17,16 @@ const F64ActionOperator{N, B<:AbstractBasis} = ActionOperator{N, B, Float64}
 ActionOperator{N, B, T}(f::Function) where {N, B<:AbstractBasis, T} =
     ActionOperator{N, B, T, typeof(f)}(f)
 
-struct ArrayOperator{N, B<:AbstractBasis, T, A<:AbstractArray{T}} #=
-    =# <: AbstractOperator{N, B, T}
+struct FunctionOperator{N, B<:AbstractBasis, T, F<:Function} <: AbstractOperator{N, B, T}
+    rep::F
+end
+const CF64FunctionOperator{N, B<:AbstractBasis} = FunctionOperator{N, B, ComplexF64}
+const F64FunctionOperator{N, B<:AbstractBasis} = FunctionOperator{N, B, Float64}
+
+FunctionOperator{N, B, T}(f::Function) where {N, B<:AbstractBasis, T} =
+    FunctionOperator{N, B, T, typeof(f)}(f)
+
+struct ArrayOperator{N, B<:AbstractBasis, T, A<:AbstractArray{T}} <: AbstractOperator{N, B, T}
     rep::A
 
     function ArrayOperator{N, B, T, A}(rep::A) where
@@ -52,12 +59,14 @@ end
 rep(op::AbstractOperator) = op.rep
 reptype(op::ArrayOperator{<:Any, <:Any, <:Any, A}) where A = A
 reptype(op::ActionOperator{<:Any, <:Any, <:Any, F}) where F = F
+reptype(op::FunctionOperator{<:Any, <:Any, <:Any, F}) where F = F
 Base.eltype(::Type{<:AbstractOperator{<:Any, <:Any, T}}) where T = T
 
 ## For now, this does not work
 #(op::AbstractOperator{N, <:Any, T})(args...) where {N, T} = op(Array{T, N}, args...)
 ## Work around
 (op::ActionOperator{N, <:Any, T})(args...) where {N, T} = op(Array{T, N}, args...)
+(op::FunctionOperator{N, <:Any, T})(args...) where {N, T} = op(Array{T, N}, args...)
 (op::ArrayOperator{N, <:Any, T})(args...) where {N, T} = op(Array{T, N}, args...)
 @generated (op::ActionOperator{N, B, T})(args::Vararg{B, N}) where
                                           {N, B<:AbstractBasis, T, A<:AbstractArray{T, N}} =
@@ -81,6 +90,9 @@ end
     :(@ncall($N2, matrixelem, op, i -> args[i]))
 end
 
+@generated matrixelem(op::FunctionOperator{N, B, T}, args::Vararg{B, N2}) where
+                     {N, N2, B<:AbstractBasis} =
+    :(@ncall($N2, rep(op), i -> args[i]))
 @generated matrixelem(op::ArrayOperator{N, B}, args::Vararg{B, N2}) where
                      {N, N2, B<:AbstractBasis} =
     :(@nref($N2, rep(op), i -> index(args[i])))
@@ -257,6 +269,9 @@ end
 @generated Base.zero(::Type{<:ActionOperator{N, B, T}}) where
                     {N, B<:AbstractBasis, T} =
     :(ActionOperator{N, B, T}((@ntuple($N, _) -> zeros(T, $(fill(dim(B), N)...)))))
+@generated Base.zero(::Type{<:FunctionOperator{N, B, T}}) where
+                    {N, B<:AbstractBasis, T} =
+    :(FunctionOperator{N, B, T}((@ntuple($(2N), _) -> zero(T))))
 @generated Base.zero(::Type{<:ArrayOperator{N, B, <:Any, A}}) where
                     {N, B<:AbstractBasis, A<:AbstractArray} =
     :(ArrayOperator{N, B}(zero(similar(A, $(fill(dim(B), 2N)...)))))
@@ -264,15 +279,21 @@ end
 #@generated Base.adjoint(op::ActionOperator{N, B, T}) where {N, B<:AbstractBasis, T} =
 #    :(ActionOperator{N, B, T}(@ntuple($N, b) ->
 #                                    conj.(permutedims(@ncall($N, rep(op), b), $N:-1:1))))
+@generated function Base.adjoint(op::FunctionOperator{N, B, T}) where {N, B<:AbstractBasis, T}
+    reversed = [Symbol("arg_$i") for i = 2N:-1:1]
+    :(FunctionOperator{N, B, T}(@ntuple($(2N), arg) -> conj(rep(op)($(reversed...)))))
+end
 Base.adjoint(op::ArrayOperator{N, B}) where {N, B<:AbstractBasis} =
     ArrayOperator{N, B}(conj.(permutedims(rep(op), 2N:-1:1)))
 
 for op in (:*, :+, :-)
     @eval Base.$op(As::ArrayOperator{N, B}...) where {N, B<:AbstractBasis} =
         ArrayOperator{N, B}($op(map(A -> rep(A), As)...))
-    ## Should allow different T's...
+    ## Should allow different T's. Also, @generate this
     @eval Base.$op(As::ActionOperator{N, B, T}...) where {N, B<:AbstractBasis, T} =
         ActionOperator{N, B, T}((args...) -> $op(map(A -> rep(A)(args...), As)...))
+    @eval Base.$op(As::FunctionOperator{N, B, T}...) where {N, B<:AbstractBasis, T} =
+        FunctionOperator{N, B, T}((args...) -> $op(map(A -> rep(A)(args...), As)...))
 end
 for op in (:*, :\)
     @eval Base.$op(x::Number, A::ArrayOperator{N, B}) where {N, B<:AbstractBasis} =
@@ -280,7 +301,8 @@ for op in (:*, :\)
     ## Should allow different T's...
     @eval Base.$op(x::Number, A::ActionOperator{N, B, T}) where {N, B<:AbstractBasis, T} =
         ActionOperator{N, B, T}((args...) -> $op(x, rep(op)(args...)))
-        
+    @eval Base.$op(x::Number, A::FunctionOperator{N, B, T}) where {N, B<:AbstractBasis, T} =
+        FunctionOperator{N, B, T}((args...) -> $op(x, rep(op)(args...)))
 end
 for op in (:*, :/)
     @eval Base.$op(A::ArrayOperator{N, B}, x::Number) where {N, B<:AbstractBasis} =
@@ -288,6 +310,8 @@ for op in (:*, :/)
     ## Should allow different T's...
     @eval Base.$op(A::ActionOperator{N, B, T}, x::Number) where {N, B<:AbstractBasis, T} =
         ActionOperator{N, B, T}((args...) -> $op(rep(A)(args...), x))
+    @eval Base.$op(A::FunctionOperator{N, B, T}, x::Number) where {N, B<:AbstractBasis, T} =
+        FunctionOperator{N, B, T}((args...) -> $op(rep(A)(args...), x))
 end
 
 end # module Operators
