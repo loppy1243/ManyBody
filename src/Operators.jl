@@ -1,6 +1,8 @@
 @reexport module Operators
-export AbstractOperator, ActionOperator, CActionOperator, ArrayOperator, tabulate, refop,
-       RaiseOp, LowerOp, RaiseLowerOps, A, refop, contract, normord 
+export AbstractOperator, ActionOperator, CF64ActionOperator, F64ActionOperator,
+       FunctionOperator, CF64FunctionOperator, F64FunctionOperator, ArrayOperator,
+       CF64ArrayOperator, F64ArrayOperator, rep, reptype, tabulate, refop, RaiseOp, LowerOp,
+       RaiseLowerOps, A, refop, contract, normord
 
 using Base.Cartesian
 using Combinatorics: levicivita
@@ -91,7 +93,7 @@ end
 end
 
 @generated matrixelem(op::FunctionOperator{N, B, T}, args::Vararg{B, N2}) where
-                     {N, N2, B<:AbstractBasis} =
+                     {N, N2, B<:AbstractBasis, T} =
     :(@ncall($N2, rep(op), i -> args[i]))
 @generated matrixelem(op::ArrayOperator{N, B}, args::Vararg{B, N2}) where
                      {N, N2, B<:AbstractBasis} =
