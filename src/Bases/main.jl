@@ -12,7 +12,7 @@ using Reexport: @reexport
 abstract type AbstractBasis <: AbstractState end
 
 struct Bra{S}; state::S end
-struct ZeroState end
+struct ZeroState <: AbstractState end
 
 include("interface.jl")
 include("iter.jl")
