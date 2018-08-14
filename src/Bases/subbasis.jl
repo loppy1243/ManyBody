@@ -14,7 +14,6 @@ Base.:(==)(x::Sub{B}, y::B) where B<:AbstractBasis = x.state == y
 Base.:(==)(x::B, y::Sub{B}) where B<:AbstractBasis = x == y.state
 Base.promote_rule(::Type{<:Sub{B}}, ::Type{B}) where B<:AbstractBasis = B
 
-dim(::Type{SB}) where SB<:Sub = length(basis(SB))
 index(x::Sub) = findfirst(isequal(x), basis(typeof(x)))
 indexbasis(::Type{SB}, i) where {B, SB<:Sub{B}} = basis(SB)[i]
 
