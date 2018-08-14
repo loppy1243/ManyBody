@@ -16,7 +16,7 @@ function get_ty_name(t)
     end |> string
 end
 
-with_logger(ConsoleLogger(stdout, Logging.Debug)) do
+with_logger(ConsoleLogger(stdout, Logging.Info)) do
     for file in readdir(@__DIR__)
         file == basename(@__FILE__) && continue
         include(file)
