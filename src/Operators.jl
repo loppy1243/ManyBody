@@ -12,7 +12,12 @@ struct FunctionOperator{N, B<:AbstractBasis, T, F<:Function} #=
     =# <: AbstractOperator{N, B, T}
     rep::F
 end
-const CFunctionOperator{N, B<:AbstractBasis} = FunctionOperator{N, B, ComplexF64}
+const CF64FunctionOperator{N, B<:AbstractBasis} = FunctionOperator{N, B, ComplexF64}
+const F64FunctionOperator{N, B<:AbstractBasis} = FunctionOperator{N, B, Float64}
+
+FunctionOperator{N, B, T}(f::Function) where {N, B<:AbstractBasis, T} =
+    FunctionOperator{N, B, T, typeof(f)}(f)
+
 struct ArrayOperator{N, B<:AbstractBasis, T, A<:AbstractArray{T}} #=
     =# <: AbstractOperator{N, B, T}
     rep::A
@@ -23,8 +28,11 @@ struct ArrayOperator{N, B<:AbstractBasis, T, A<:AbstractArray{T}} #=
         new(rep)
     end
 end
-FunctionOperator{N, B, T}(f::Function) where {N, B<:AbstractBasis, T} =
-    FunctionOperator{N, B, T, typeof(f)}(f)
+const CF64ArrayOperator{N, B<:AbstractBasis} =
+    ArrayOperator{N, B, ComplexF64, <:Array{ComplexF64}}
+const F64ArrayOperator{N, B<:AbstractBasis} =
+    ArrayOperator{N, B, Float64, <:Array{Float64}}
+
 function ArrayOperator{N, B, T, A}(a::AbstractArray) where
                                   {N, B<:AbstractBasis, T, A<:AbstractArray{T}}
     a = convert(A, a)
