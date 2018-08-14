@@ -71,13 +71,17 @@ function _defSub(gen, ty_expr, expr)
 
         $generation_expr = Bases.$gen()
 
-        let _BASIS = begin
-                x = (() -> $(esc(expr)))()
-                x = convert(Vector{$base_ty_esc}, x)
-                @assert allunique(x)
-                map($new_ty_esc, x)
+        let _BASIS_CACHE = Dict{Type{$new_ty_esc}, Vector{$new_ty_esc}}()
+            global $basis_expr = begin
+                if haskey(_BASIS_CACHE, $new_ty_esc)
+                    _BASIS_CACHE[$new_ty_esc]
+                else
+                    x = (() -> $(esc(expr)))()
+                    x = convert(Vector{$base_ty_esc}, x)
+                    @assert allunique(x)
+                    _BASIS_CACHE[$new_ty_esc] = map($new_ty_esc, x)
+                end
             end
-            global $basis_expr = _BASIS
         end
     end
 end
