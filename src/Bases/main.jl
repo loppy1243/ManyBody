@@ -20,7 +20,7 @@ include("indexbasis.jl")
 include("subbasis.jl")
 include("pairing.jl")
 include("refstates.jl")
-include("mbbasis.jl")
+include("slater.jl")
 include("baseops.jl")
 
 @defSub Paired{F, L} <: Slater{Pairing{L}} begin
