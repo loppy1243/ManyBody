@@ -8,31 +8,25 @@ function normordtest()
     a = A(p', r, s', q')
 
     @testset "Vacuum" begin
-        println("Vacuum")
+        @debug testset="Normal Ordering/Vacuum"
         sgn, Na = normord(a)
-        println("Input:")
-        println("+ $a")
-        println("Want:")
-        println("+ A($s', $q', $p', $r )")
-        println("Normal ordered:")
-        print(sgn > 0 ? "+ " : "- ", Na)
-        println()
-        println()
+        @debug begin
+            input   = "+ $a"
+            want    = "+ A($s', $q', $p', $r )"
+            normord = "$(sgn > 0 ? "+" : "-") $Na"
+        end
         @test Na == A(s', q', p', r)
         @test sgn == 1
     end
 
     @testset "Fermi{2}" begin
-        println("Fermi{2}")
+        @debug testset="Normal Ordering/Fermi{2}"
         sgn, Na = normord(RefStates.Fermi{2, SPBASIS}, a)
-        println("Input:")
-        println("+ $a")
-        println("Want:")
-        println("- A($s', $p', $q', $r )")
-        println("Normal ordered:")
-        println(sgn > 0 ? "+ " : "- ", Na)
-        println()
-        println()
+        @debug begin
+            input   = "+ $a"
+            want    = "- A($s', $p', $q', $r )"
+            normord = "$(sgn > 0 ? "+" : "-") $Na"
+        end
         @test Na == A(s', p', q', r)
         @test sgn == -1
     end
