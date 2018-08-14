@@ -15,8 +15,13 @@ Generation(::Type{<:AbstractBasis}) = Computed()
 
 basis(B::Type{<:AbstractBasis}) = _basis(B, Generation(B))
 _basis(B::Type{<:AbstractBasis}, ::Computed) = B[1:dim(B)]
-@generated _basis(::Type{B}, ::Generated) where B<:AbstractBasis =
-    map(i -> indexbasis(B.parameters[1], i), 1:dim(B))
+let _BASIS_CACHE = Dict{Type, Vector{<:AbstractBasis}}()
+    _basis(::Type{B}, ::Generated) where B<:AbstractBasis = if haskey(_BASIS_CACHE, B)
+        _BASIS_CACHE[B]
+    else
+        _BASIS_CACHE[B] = map(i -> indexbasis(B.parameters[1], i), 1:dim(B))
+    end
+end
 
 dim(B::Type{<:AbstractBasis}) = _dim(B, Generation(B))
 _dim(::Type{B}, ::Provided) where B<:AbstractBasis = length(basis(B))
