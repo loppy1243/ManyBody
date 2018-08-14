@@ -31,6 +31,9 @@ end; end
 Base.:+(a::AbstractBasis) = a
 Base.:-(a::AbstractBasis) = -Vector(a)
 
+if !hasmethod(Base.:*, (Vararg{AbstractArray},))
+    Base.:*(xs::Vararg{AbstractArray}) = MethodError(Base.:*, (xs...,)) |> throw
+end
 ## OMG this worked. Please add actual tests.
 @generated function Base.:*(xs::Vararg{Union{AbstractArray, AbstractBasis}})
     numdims = sum(xs) do x
