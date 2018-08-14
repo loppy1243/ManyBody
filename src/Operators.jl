@@ -59,11 +59,13 @@ function ArrayOperator(B::AbstractBasis, a::AbstractArray)
 end
 
 rep(op::AbstractOperator) = op.rep
-reptype(op::ArrayOperator{<:Any, <:Any, <:Any, A}) where A = A
-reptype(op::ActionOperator{<:Any, <:Any, <:Any, F}) where F = F
-reptype(op::FunctionOperator{<:Any, <:Any, <:Any, F}) where F = F
+reptype(op::AbstractOperator) = reptype(typeof(op))
+reptype(::Type{ArrayOperator{<:Any, <:Any, <:Any, A}}) where A = A
+reptype(::Type{ActionOperator{<:Any, <:Any, <:Any, F}}) where F = F
+reptype(::Type{FunctionOperator{<:Any, <:Any, <:Any, F}}) where F = F
 Base.eltype(::Type{<:AbstractOperator{<:Any, <:Any, T}}) where T = T
-Bases.basistype(::Type{<:AbstractOperator{<:Any, B}}) where B = B
+Bases.basistype(::Type{<:AbstractOperator{<:Any, B, <:Any}}) where B = B
+Bases.basistype(x::AbstractOperator) = Bases.basistype(typeof(x))
 
 ## For now, this does not work
 #(op::AbstractOperator{N, <:Any, T})(args...) where {N, T} = op(Array{T, N}, args...)
