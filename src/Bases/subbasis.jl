@@ -37,6 +37,13 @@ function get_free_tys(tys, x::Expr)
     ret
 end
 macro defSub(ty_expr::Expr, expr)
+    _defSub(:Provided, ty_expr, expr)
+end
+## TODO: Currently assumes basis is Provided()
+#macro defSub(gen, ty_expr::Expr, expr)
+#    _defSub(gen, ty_expr, expr)
+#end
+function _defSub(gen, ty_expr, expr)
     @assert ty_expr.head == :(<:)
 
     name(x::Symbol) = x
@@ -57,10 +64,13 @@ macro defSub(ty_expr::Expr, expr)
     new_ty_esc, base_ty_esc = esc.((new_ty, base_ty))
 
     basis_expr = add_where(:(Bases.basis(::Type{$new_ty_esc})))
+    generation_expr = add_where(:(Bases.Generation(::Type{$new_ty_esc})))
 
     quote
         struct $subbasis_ty_esc end
         const $new_ty_esc = Sub{$base_ty_esc, $subbasis_ty_esc}
+
+        $generation_expr = Bases.$gen()
 
         @generated $basis_expr = begin
             x = (() -> $(esc(expr)))()
