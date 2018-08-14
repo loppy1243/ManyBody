@@ -5,7 +5,7 @@ function basisindex()
                   Bases.Paired{2, 4})
         b = basis(BASIS)
 
-        @debug "Testing basis: " BASIS
+        @debug "Testing indexing of $(get_ty_name(BASIS))" BASIS
         @test length(b) == dim(BASIS)
         @test all(b[i] == BASIS[i] for i in 1:dim(BASIS))
     end
