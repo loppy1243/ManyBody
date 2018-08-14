@@ -1,7 +1,5 @@
 @reexport module Bases
 export RefStates, AbstractState, AbstractBasis, RefState, Bra, ZeroState
-# Basis interface
-export basis, index, indexbasis, dim
 
 using ..AbstractState
 using Base.Cartesian: @ncall
