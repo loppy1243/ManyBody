@@ -63,6 +63,7 @@ reptype(op::ArrayOperator{<:Any, <:Any, <:Any, A}) where A = A
 reptype(op::ActionOperator{<:Any, <:Any, <:Any, F}) where F = F
 reptype(op::FunctionOperator{<:Any, <:Any, <:Any, F}) where F = F
 Base.eltype(::Type{<:AbstractOperator{<:Any, <:Any, T}}) where T = T
+Bases.basistype(::Type{<:AbstractOperator{<:Any, B}}) where B = B
 
 ## For now, this does not work
 #(op::AbstractOperator{N, <:Any, T})(args...) where {N, T} = op(Array{T, N}, args...)
@@ -112,16 +113,26 @@ tabulate(::Type{A}, op::ArrayOperator{N, B}) where {A<:AbstractArray, N, B<:Base
     ArrayOperator{N, B}(convert(A, rep(op)))
 tabulate(::Type{A}, op::ArrayOperator{N, B}) where {A<:AbstractArray, N, B<:AbstractBasis} =
     ArrayOperator{N, Bases.Index{B}}(convert(A, rep(op)))
-@generated function tabulate(::Type{A}, op::AbstractOperator{N, B}) where
-                            {A<:AbstractArray, N, B<:AbstractBasis}
-    quote
-        arr = similar(A, $(fill(dim(B), 2N)...))
-        @nloops $(2N) s (_ -> B) begin
-            @nref($(2N), arr, i -> index(s_i)) = @nref($(2N), op, s)
-        end
-
-        ArrayOperator{N, Bases.Index{B}}(arr)
+#@generated function tabulate(::Type{A}, op::AbstractOperator{N, B}) where
+#                            {A<:AbstractArray, N, B<:AbstractBasis}
+#    quote
+#        arr = similar(A, $(fill(dim(B), 2N)...))
+#        @nloops $(2N) s (_ -> B) begin
+#            @nref($(2N), arr, i -> index(s_i)) = @nref($(2N), op, s)
+#        end
+#
+#        ArrayOperator{N, Bases.Index{B}}(arr)
+#    end
+#end
+function tabulate(::Type{A}, op::AbstractOperator) where {A<:AbstractArray}
+    println(basistype(op))
+    println(Bases.Generation(basistype(op)))
+    arr = similar(A, fill(dim(basistype(op)), 2nbodies(op))...)
+    for S in cartesian_pow(B, Val{2nbodies(op)})
+        arr[CartesianIndex(map(index, S))] = op[S...]
     end
+
+    ArrayOperator{nbodies(op), Bases.Index{basistype(op)}}(arr)
 end
 
 struct Raised{T}; val::T end
