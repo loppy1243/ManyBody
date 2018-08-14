@@ -64,6 +64,8 @@ function _defSub(gen, ty_expr, expr)
 
     basis_expr = add_where(:(Bases.basis(::Type{$new_ty_esc})))
     generation_expr = add_where(:(Bases.Generation(::Type{$new_ty_esc})))
+    dict_key_ty = add_where(:(Type{$new_ty_esc}))
+    dict_val_ty = add_where(:(Vector{$new_ty_esc}))
 
     quote
         struct $subbasis_ty_esc end
@@ -71,8 +73,8 @@ function _defSub(gen, ty_expr, expr)
 
         $generation_expr = Bases.$gen()
 
-        let _BASIS_CACHE = Dict{Type{$new_ty_esc}, Vector{$new_ty_esc}}()
-            global $basis_expr = begin
+        let _BASIS_CACHE = Dict{$dict_key_ty, $dict_val_ty}()
+            $basis_expr = begin
                 if haskey(_BASIS_CACHE, $new_ty_esc)
                     _BASIS_CACHE[$new_ty_esc]
                 else
