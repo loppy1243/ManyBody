@@ -77,7 +77,7 @@ function _defSub(gen, ty_expr, expr)
                 @assert allunique(x)
                 map($new_ty_esc, x)
             end
-            $basis_expr = _BASIS
+            global $basis_expr = _BASIS
         end
     end
 end
