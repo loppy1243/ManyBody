@@ -50,6 +50,8 @@ function ArrayOperator(B::AbstractBasis, a::AbstractArray)
 end
 
 rep(op::AbstractOperator) = op.rep
+reptype(op::ArrayOperator{<:Any, <:Any, <:Any, A}) where A = A
+reptype(op::FunctionOperator{<:Any, <:Any, <:Any, F}) where F = F
 Base.eltype(::Type{<:AbstractOperator{<:Any, <:Any, T}}) where T = T
 
 ## For now, this does not work
