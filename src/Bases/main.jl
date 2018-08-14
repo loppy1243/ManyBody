@@ -21,7 +21,7 @@ include("subbasis.jl")
 include("pairing.jl")
 include("refstates.jl")
 include("slater.jl")
-include("baseops.jl")
+include("baseops/main.jl")
 
 @defSub Paired{F, L} <: Slater{Pairing{L}} begin
     SP = Pairing{L}
