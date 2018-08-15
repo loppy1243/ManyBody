@@ -16,6 +16,9 @@ include("interface.jl")
 include("iter.jl")
 include("indexbasis.jl")
 include("subbasis.jl")
+
+const Rep{B<:AbstractBasis} = Union{B, Sub{B}, Index{B}}
+
 include("pairing.jl")
 include("refstates.jl")
 include("slater.jl")
