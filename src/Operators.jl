@@ -222,7 +222,8 @@ function normord(::Type{R}, a::RaiseLowerOps{B}) where {B<:AbstractBasis, R<:Ref
     end
 
     p = sortperm(xs, lt=comp)
-    return (levicivita(p), RaiseLowerOps(a.ops[p]))
+
+    (levicivita(p), RaiseLowerOps(a.ops[p]))
 end
 
 @generated (a::RaiseLowerOps)(X::Bases.MaybeSub{<:Bases.Slater}) = quote
