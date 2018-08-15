@@ -3,7 +3,7 @@ using ..SpinMod
 struct Sub{B<:AbstractBasis, T} <: AbstractBasis
     state::B
 end
-const MaybeSub{B<:AbstractBasis} = Union{B, <:Sub{B}}
+const MaybeSub{B<:AbstractBasis} = Union{B, Sub{B}}
 
 Base.convert(::Type{B}, x::Sub{B}) where B = x.state
 Base.convert(::Type{C}, x::Sub{B}) where {C, B<:C} = x.state
