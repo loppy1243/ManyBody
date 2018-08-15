@@ -30,12 +30,18 @@ indexbasis(::Type{Pairing{L}}, pn::Int) where L =
 nlevels(::Type{Pairing{L}}) where L = L
 nlevels(::Type{<:Sub{Pairing{L}}}) where L = L
 nlevels(::Type{Index{Pairing{L}}}) where L = L
+
 level(sp::Pairing) = sp.level
 level(sp::Sub{<:Pairing}) = sp.state.level
 level(sp::Index{<:Pairing}) = index_to_level(sp.index)
+
 spin(sp::Pairing) = sp.spin
 spin(sp::Sub{<:Pairing}) = sp.state.spin
 spin(sp::Index{<:Pairing}) = index_to_level(sp.index)
+
+SpinMod.spinup(sp::Pairing) = spinup(sp.spin)
+SpinMod.spinup(sp::Sub{<:Pairing}) = spinup(sp.state.spin)
+SpinMod.spinup(sp::Index{<:Pairing}) = Bool(index_to_spin(sp.index))
 
 dim(::Type{Pairing{L}}) where L = 2L
 
