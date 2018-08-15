@@ -28,7 +28,8 @@ for op in (:+, :-); @eval begin
     Base.$op(a::B, b::Sub{B}) where B<:AbstractBasis = $op(Vector(a), Vector(convert(B, b)))
     Base.$op(a::Sub{B}, b::B) where B<:AbstractBasis = $op(Vector(convert(B, a)), Vector(b))
 end; end
-Base.:+(a::AbstractBasis) = a
+Base.:+(a::AbstractState) = a
+Base.:-(::ZeroState) = ZeroState()
 Base.:-(a::AbstractBasis) = -Vector(a)
 
 if !hasmethod(Base.:*, (Vararg{AbstractArray},))
