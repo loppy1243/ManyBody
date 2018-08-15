@@ -2,7 +2,7 @@
 # Unexported, optional
 #noexport Generation
 # Defined in this file
-export basis, basistype, dim
+export basis, basistype, dim, inner
 # Not defined here
 export index, indexbasis
 
@@ -28,3 +28,8 @@ _dim(::Type{B}, ::Provided) where B<:AbstractBasis = length(basis(B))
 
 basistype(x::AbstractBasis) = basistype(typeof(x))
 basistype(::Type{B}) where B<:AbstractBasis = B
+
+innertype(x::AbstractBasis) = innertype(typeof(x))
+innertype(::Type{B}) where B<:AbstractBasis = B
+
+inner(x::AbstractState) = x

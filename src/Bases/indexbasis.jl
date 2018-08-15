@@ -8,6 +8,9 @@ Index(s::AbstractBasis) = Index{typeof(s)}(index(s))
 
 indexes(::Type{B}) where B<:AbstractBasis = map(Index{B}, 1:dim(B))
 
+innertype(::Type{Index{B}}) where B<:AbstractBasis = B
+inner(i::Index{B}) where B<:AbstractBasis = B[i.index]
+
 index(s::Index) = s.index
 indexbasis(::Type{S}, s::Int) where S<:Index = S(s)
 basis(::Type{Index{B}}) where B = indexes(B)
