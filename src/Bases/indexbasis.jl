@@ -1,12 +1,8 @@
-export indexes
-
 struct Index{B<:AbstractBasis} <: AbstractBasis
     index::Int
 end
 const MaybeIndex{B<:AbstractBasis} = Union{B, Index{B}}
 Index(s::AbstractBasis) = Index{typeof(s)}(index(s))
-
-indexes(::Type{B}) where B<:AbstractBasis = map(Index{B}, 1:dim(B))
 
 innertype(::Type{Index{B}}) where B<:AbstractBasis = B
 inner(i::Index{B}) where B<:AbstractBasis = B[i.index]
