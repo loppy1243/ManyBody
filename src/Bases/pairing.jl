@@ -25,7 +25,7 @@ index_to_spin(i) = Spin(Bool(1 - i % 2))
 index_to_level(i) = div(i - Bool(index_to_spin(i)) - 1, 2) + 1
 
 indexbasis(::Type{Pairing{L}}, pn::Int) where L =
-    Pairing{L}(index_to_spin(pn), index_to_level(pn))
+    Pairing{L}(index_to_level(pn), index_to_spin(pn))
 
 nlevels(::Type{Pairing{L}}) where L = L
 nlevels(::Type{<:Sub{Pairing{L}}}) where L = L
