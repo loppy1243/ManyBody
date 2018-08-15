@@ -39,19 +39,22 @@ dim(::Type{Slater{B}}) where B = 2^dim(B) - 1
 n_occ(s::Slater) = count(s.bits)
 n_unoc(s::Slater) = count(.~s.bits)
 
-function create!(s::Slater{B}, p::B) where B
+create!(s::Slater{B}, p::Sub{B}) = create!(s, inner(p))
+function create!(s::Slater{B}, p::MaybeIndex{B}) where B
     i = index(p)
     s.bits[i] = true
 
     1 - 2(count(s.bits[1:i-1]) % 2)
 end
-function annihil!(s::Slater{B}, p::B) where B
+create(s, p) =  s2 = deepcopy(s); (create!(s2, p), s2))
+
+annihil!(s::Slater{B}, p::Sub{B}) = annihil!(s, inner(p))
+function annihil!(s::Slater{B}, p::MaybeIndex{B}) where B
     i = index(p)
     s.bits[i] = false
 
     1 - 2(count(s.bits[1:i-1]) % 2)
 end
-create(s, p) = (s2 = deepcopy(s); (create!(s2, p), s2))
 annihil(s, p) = (s2 = deepcopy(s); (annihil!(s2, p), s2))
 
 function Base.show(io::IO, x::MaybeSub{Slater{B}}) where B
