@@ -21,8 +21,8 @@ Slater(ps...) = Slater(ps)
 Slater(ps::NTuple{N, B}) where {N, B<:AbstractBasis} = Slater{B}(ps)
 
 Base.:(==)(s1::MB, s2::MB) where MB<:Slater = s1.bits == s2.bits
-Base.in(p::B, s::Slater{B}) where B = s.bits[index(p)]
-Base.in(p::B, s::Sub{Slater{B}}) where B = p in s.state
+Base.in(p::Rep{B}, s::Rep{Slater{B}}) where B = inner(s).bits[index(p)]
+Base.in(p::Sub{B}, s::Rep{Slater{B}}) where B = inner(p) in s
 
 index(s::Slater) = sum(s.bits[i]*2^(i-1) for i in eachindex(s.bits))
 function indexbasis(::Type{Slater{B}}, ix::Int) where B 
