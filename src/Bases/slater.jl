@@ -58,8 +58,7 @@ end
 annihil(s, p) = (s2 = deepcopy(s); (annihil!(s2, p), s2))
 
 function Base.show(io::IO, x::MaybeSub{Slater{B}}) where B
-    x = convert(Slater{B}, x)
     print(io, "Slater($(dim(B)))[",
-              [string(B[i])*" " for (i, p) in enumerate(x.bits) if p]...,
+              [string(B[i])*" " for (i, p) in enumerate(inner(x).bits) if p]...,
               "]")
 end

@@ -1,7 +1,8 @@
 Base.adjoint(b::AbstractBasis) = Bra(b)
 Base.adjoint(b::Bra) = b.state
 
-Base.:*(a::Bra{B}, b::B) where B<:AbstractBasis = a == b
+#Base.:*(a::Bra{B}, b::B) where B<:AbstractBasis = a == b
+Base.:*(a::Bra{<:Rep{B}}, b::Rep{B}) where B<:AbstractBasis = inner(a.state) == inner(b)
 Base.:*(::Bra{ZeroState}, ::Union{<:AbstractVector, <:AbstractBasis}) = 0
 Base.:*(::Union{<:Adjoint{<:Any, <:AbstractVector}, Bra{<:AbstractBasis}}, ::ZeroState) = 0
 Base.:*(::Bra{ZeroState}, ::ZeroState) = 0
