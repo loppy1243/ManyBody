@@ -5,8 +5,8 @@ Base.:*(a::Bra{B}, b::B) where B<:AbstractBasis = a == b
 Base.:*(::Bra{ZeroState}, ::Union{<:AbstractVector, <:AbstractBasis}) = 0
 Base.:*(::Union{<:Adjoint{<:Any, <:AbstractVector}, Bra{<:AbstractBasis}}, ::ZeroState) = 0
 Base.:*(::Bra{ZeroState}, ::ZeroState) = 0
-Base.:*(a::Bra{<:AbstractBasis}, b::AbstractVector) = b[index(a)]
-Base.:*(a::Adjoint{<:Any, <:AbstractVector}, b::AbstractBasis) = conj(b[index(a)])
+Base.:*(a::Bra{<:AbstractBasis}, b::AbstractVector) = b[index(a.state)]
+Base.:*(a::Adjoint{<:Any, <:AbstractVector}, b::AbstractBasis) = conj(a[index(b)])
 
 for op in (:*, :/)
     @eval Base.$op(a::Number, b::AbstractBasis) = $op(a, Vector{typeof(a)}(b))
