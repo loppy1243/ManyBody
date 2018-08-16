@@ -9,7 +9,7 @@
 struct Neg{B<:AbstractBasis} <: AbstractBasis
     state::B
 end
-Neg(state::AbstractBasis) = Neg{typeof(state)}(state)
+#Neg(state::AbstractBasis) = Neg{typeof(state)}(state)
 Base.:+(b::AbstractBasis) = b
 Base.:-(b::AbstractBasis) = Neg(b)
 
@@ -28,7 +28,7 @@ Product(args::Vararg{AbstractBasis, N}) where N =
 
 Base.:(==)(a::B, b::B) where B<:Product = a.state == b.states
 
-Base.convert(::Type{Product{1, Tuple{B}}}, b::B) = Product{1, Tuple{B}}(b)
+Base.convert(::Type{Product{1, Tuple{B}}}, b::B) where B<:AbstractBasis = Product{1, Tuple{B}}(b)
 Base.promote(::Type{Product{1, Tuple{B}}}, ::Type{B}) where B<:AbstractBasis =
     Product{1, Tuple{B}}
 
