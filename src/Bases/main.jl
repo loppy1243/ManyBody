@@ -22,6 +22,7 @@ const Rep{B<:AbstractBasis} = Union{B, Sub{B}, Index{B}}
 include("pairing.jl")
 include("refstates.jl")
 include("slater.jl")
+include("product.jl")
 include("baseops/main.jl")
 
 @defSub Paired{F, L} <: Slater{Pairing{L}} begin
