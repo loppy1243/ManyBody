@@ -23,7 +23,6 @@ dim(B::Type{<:Neg}) = dim(innertype(B))
 struct Product{N, BS<:NTuple{N, AbstractBasis}} <: AbstractBasis
     states::BS
 end
-const CF64Product{N, BS<:NTuple{N, AbstractBasis}} = Product{N, BS, ComplexF64}
 Product(args::Vararg{AbstractBasis, N}) where N =
     Product{N, typeof(args)}(args)
 
