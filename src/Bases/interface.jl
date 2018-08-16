@@ -13,7 +13,7 @@ Generation(::Type{<:AbstractBasis}) = Computed()
 
 basis(B::Type{<:AbstractBasis}) = _basis(B, Generation(B))
 _basis(B::Type{<:AbstractBasis}, ::Computed) = B[1:dim(B)]
-## Don't know if I want to do this weird stuff with indexbasis
+## Don't know if I want to do this weird stuff with indexbasis...
 let _BASIS_CACHE = Dict{Type, Vector{<:AbstractBasis}}()
     global _basis#, _indexbasis
     _basis(B::Type{<:AbstractBasis}, ::Generated) = if haskey(_BASIS_CACHE, B)
