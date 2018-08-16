@@ -26,21 +26,22 @@ let _BASIS_CACHE = Dict{Type, Vector{<:AbstractBasis}}()
 #    _indexbasis(B::Type{<:AbstractBasis}, i::Int, ::Generated) = basis(B)[i]
 end
 
-index(b::AbstractBasis) = _index(b, Generation(typeof(B)))
-_index(b::AbstractBasis, ::Provided) = findfirst(==(b), basis(B))
+index(b::AbstractBasis) = _index(b, Generation(typeof(b)))
+_index(b::AbstractBasis, ::Provided) = findfirst(==(b), basis(typeof(b)))
 
-indexbasis(b::AbstractBasis, i::Int) = _indexbasis(b, i, Generation(typeof(B)))
-_indexbasis(b::AbstractBasis, i::Int, ::Provided) = basis(B)[i]
+indexbasis(B::Type{<:AbstractBasis}, i::Int) = _indexbasis(B, i, Generation(B))
+_indexbasis(B::Type{<:AbstractBasis}, i::Int, ::Provided) = basis(B)[i]
 
+## Do I really want to do this
 dim(B::Type{<:AbstractBasis}) = _dim(B, Generation(B))
-_dim(::Type{B}, ::Provided) where B<:AbstractBasis = length(basis(B))
+_dim(B::Type{<:AbstractBasis}, ::Provided) = length(basis(B))
 
-## Really mean as a method on AbstractState's
+## Really meant as a method on AbstractState's
 basistype(x::AbstractBasis) = basistype(typeof(x))
-basistype(::Type{B}) where B<:AbstractBasis = B
+basistype(B::Type{<:AbstractBasis}) = B
 
 ## Should be merged with basistype?
 innertype(x::AbstractBasis) = innertype(typeof(x))
-innertype(::Type{B}) where B<:AbstractBasis = B
+innertype(B::Type{<:AbstractBasis}) = B
 
 inner(x::AbstractState) = x

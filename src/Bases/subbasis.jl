@@ -9,11 +9,13 @@ const MaybeSub{B<:AbstractBasis} = Union{B, Sub{B}}
 Base.convert(::Type{C}, x::Sub{B}) where {C<:AbstractBasis, B<:C} = x.state
 Base.convert(::Type{SB}, x::B) where {B, SB<:Sub{B}} = SB(x)
 
+Base.:(==)(x::S, y::S) where S<:Sub = inner(x) == inner(y)
+Base.:(==)(x::Sub{B}, y::Sub{B}) where B<:AbstractBasis = false
 Base.:(==)(x::MaybeSub{B}, y::MaybeSub{B}) where B<:AbstractBasis = inner(x) == inner(y)
 Base.promote_rule(::Type{<:Sub{B}}, ::Type{B}) where B<:AbstractBasis = B
 
 innertype(::Type{<:Sub{B}}) where B<:AbstractBasis = B
-inner(s::Sub{B}) where B<:AbstractBasis = s.state
+inner(s::Sub{<:AbstractBasis}) = s.state
 
 get_tys(s::Symbol) = [s]
 get_tys(x::Expr) = if x.head == :curly

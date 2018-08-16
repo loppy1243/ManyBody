@@ -26,24 +26,26 @@ end
 Product(args::Vararg{AbstractBasis, N}) where N =
     Product{N, typeof(args)}(args)
 
-Base.:(==)(a::B, b::B) where B<:Product = a.state == b.states
+Base.:(==)(a::B, b::B) where B<:Product = a.states == b.states
 
 Base.convert(::Type{Product{1, Tuple{B}}}, b::B) where B<:AbstractBasis = Product{1, Tuple{B}}(b)
 Base.promote(::Type{Product{1, Tuple{B}}}, ::Type{B}) where B<:AbstractBasis =
     Product{1, Tuple{B}}
 
-index(b::Product) = index(b.states[1]) + sum(enumerate(b.states)) do I
+index(b::Product) = index(b.states[1]) + sum(enumerate(b.states[2:end])) do I
     i, c = I
-    index(c)*prod(dim.(typeof.(b.states[1:i])))
+    (index(c)-1)*prod(dim.(typeof.(b.states[1:i])))
 end
 
+## Could @generate to eliminate func calls, unroll loop
 function indexbasis(::Type{Product{N, BS}}, i::Int) where {N, BS<:NTuple{N, AbstractBasis}}
     ixs = Vector{AbstractBasis}(undef, N)
 
+    i -= 1
     for (k, B) in enumerate(BS.parameters)
-        j = i % dim(B)
+        j = i % dim(B) + 1
         ixs[k] = B[j]
-        i = div(i - j, dim(B))
+        i = div(i - j + 1, dim(B))
     end
 
     Product{N, BS}(Tuple(ixs))
