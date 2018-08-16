@@ -31,10 +31,25 @@ Base.convert(::Type{Product{1, Tuple{B}}}, b::B) = Product{1, Tuple{B}}(b)
 Base.promote(::Type{Product{1, Tuple{B}}}, ::Type{B}) where B<:AbstractBasis =
     Product{1, Tuple{B}}
 
-index(b::Product) = prod(enumerate(b.states)) do I
+index(b::Product) = index(b.states[1]) + sum(enumerate(b.states)) do I
     i, c = I
-    index(c)*prod(dim.(typeof.(b.states[1:i-1])))
+    index(c)*prod(dim.(typeof.(b.states[1:i])))
 end
+indexbasis(B::Type{Product{N, BS}}, i::Int) where {N, BS<:NTuple{N, AbstractBasis}} =
+    _prod_indexbasis(B, BS, i)
+function _prod_indexbasis(BS::Type{Tuple{B, R}}, i) where
+                         {B<:AbstractBasis, R<:Vararg{AbstractBasis}}
+    j = i % dim(B)
+    (j, _prod_indexbasis(R, div(i - j, dim(B)))...)
+end
+_prod_indexbasis(BS::Tuple{B}, i) where B<:AbstractBasis = (i % dim(B),)
+
+index(1) + dim(1)*(index(2)-1) + dim(1)*dim(2)*(index(3)-1) + ...
+1 <- basis(1)[1], basis(2)[1], basis(3)[1], ...
+2 <- basis(1)[2], basis(2)[1], basis(3)[1], ...
+...
+dim(1) <- basis(1)[dim(1)], basis(2)[1], basis(3)[1], ...
+dim(1) + 1 <- basis(1)[1], basis(2)[2], basis(3)[1], ...
 
 _states(a::AbstractBasis) = (a,)
 _states(a::Product) = a.states
