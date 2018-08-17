@@ -29,12 +29,18 @@ end
 Product(args::Vararg{AbstractBasis, N}) where N =
     Product{N, typeof(args)}(args)
 
+rank(::Type{<:Product{N}}) where N = N
+
 innertype(::Type{Product{1, Tuple{B}}}) where B<:AbstractBasis = B
 inner(b::Product{1}) = b.states[1]
 
-@generated function normalize(b::Product{N, BS}) where {N, BS<:NTuple{N, AbstractBasis}}
+innertypes(::Type{Product{N, BS}}) where {N, BS<:NTuple{N, AbstractBasis}} =
+    Tuple(BS.parameters)
+
+## TODO: TESTME
+@generated function normalize(b::Product)
     c = 0
-    xs = map(BS.parameters) do B
+    xs = map(innertypes(b)) do B
         if B <: Neg
             c += 1
             (:(inner(b.states[$i])), innertype(B))
@@ -43,7 +49,7 @@ inner(b::Product{1}) = b.states[1]
         end
     end
     exprs, tys = zip(xs...)
-    prod_expr = :(Product{N, Tuple{$(tys...)}}(($(exprs...),)))
+    prod_expr = :(Product{$(rank(b)), Tuple{$(tys...)}}(($(exprs...),)))
 
     if iseven(c)
         prod_expr
@@ -59,29 +65,29 @@ Base.convert(::Type{Product{1, Tuple{B}}}, b::B) where B<:AbstractBasis = Produc
 Base.promote_rule(::Type{Product{1, Tuple{B}}}, ::Type{B}) where B<:AbstractBasis =
     Product{1, Tuple{B}}
 
+innerindices(b::Product) = map(index, b.states)
+
 index(b::Product) = index(b.states[1]) + sum(enumerate(b.states[2:end])) do I
     i, c = I
     (index(c)-1)*prod(dim.(typeof.(b.states[1:i])))
 end
 
 ## Could @generate to eliminate func calls, unroll loop
-function indexbasis(::Type{Product{N, BS}}, i::Int) where {N, BS<:NTuple{N, AbstractBasis}}
-    ixs = Vector{AbstractBasis}(undef, N)
+function indexbasis(P::Type{<:Product}, i::Int)
+    ixs = Vector{AbstractBasis}(undef, rank(P))
 
     i -= 1
-    for (k, B) in enumerate(BS.parameters)
+    for (k, B) in enumerate(innertypes(P))
         j = i % dim(B) + 1
         ixs[k] = B[j]
         i = div(i - j + 1, dim(B))
     end
 
-    Product{N, BS}(Tuple(ixs))
+    P(Tuple(ixs))
 end
 
-innerdims(::Type{Product{N, BS}}) where {N, BS<:NTuple{N, AbstractBasis}} =
-    map(dim, BS.parameters)
+innerdims(B::Type{<:Product}) = map(dim, innertypes(B))
 dim(B::Type{<:Product}) = prod(dims(B))
-rank(::Type{<:Product{N}}) where N = N
 
 ## Would an explicit tensor() function be better?
 
