@@ -3,8 +3,9 @@
 - Allow `AbstractOperator{N}`s to act on `Product{N}`s
 
 # States
-- Interface with Bases
-- Algebra
+x Interface with Bases
+x [TENTATIVE] Algebra
+- Add conversion between `ArrayStates{}` of differing `Product{}`s
 
 # Bases
 - Is there a way to let
@@ -12,3 +13,4 @@
   abstract type Rep{B<:AbstractBasis} end
   ```
 that works with Product{1}?
+x Add promote_rule between `Product{}`s of `Rep{}`s

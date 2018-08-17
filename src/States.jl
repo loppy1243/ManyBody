@@ -1,139 +1,187 @@
-@reexport module States
-export State, VecState, CVecState, MaybeBasis, Bra
+abstract type MixedState{N, B<:AbstractBasis, T} <: AbstractState end
 
-using ..Bases
-using ..AbstractState
-using Suppressor: @suppress_err
-
-struct Bra{S<:AbstractState}; state::S end
 struct Zero <: AbstractState end
-struct State{B<:AbstractBasis, A<:AbstractArray} <: AbstractState
+
+struct Scaled{B<:AbstractBasis, T} <: MixedState{B, T}
+    coeff::T
+    state::B
+
+    function Scaled{B, T}(c::T, b::B) where {B<:AbstractBasis, T}
+        @assert !(B <: Bases.Neg || B <: Bases.Product{1})
+        new(c, b)
+    end
+end
+const CF64Scaled{B<:AbstractBasis} <: Scaled{B, ComplexF64}
+
+Scaled(T::Type, b::AbstractBasis) = Scaled{typeof(b), T}(one(T), b)
+Scaled(c, b::AbstractBasis) = Scaled{B, typeof(c)}(c, b)
+Scaled(T::Type, b::Bases.Neg{<:AbstractBasis}) = Scaled(-one(T), inner(b))
+Scaled(c, b::Bases.Neg{<:AbstractBasis}) = Scaled(-c, inner(b))
+Scaled(T::Type, b::Bases.Product{1}) = Scaled(T, inner(b))
+Scaled(c, b::Bases.Product{1}) = Scaled(c, inner(b))
+
+## Allow B<:Bases.Rep{<:Bases.Product{N}}?
+struct ArrayState{N, B<:Bases.Product{N}, T, A<:AbstractArray{T, N}} <: MixedState{B, T}
     coeffs::A
-    State{B, A}(coeffs::A) where {B, A} = new(coeffs)
-end
-const ArrayState{B<:AbstractBasis, T, N} = State{B, Array{T, N}}
-const CArrayState{B<:AbstractBasis, N} = State{B, Array{ComplexF64, N}}
-const VecState{B<:AbstractBasis, T} = State{B, Array{T, 1}}
-const CVecState{B<:AbstractBasis} = State{B, Array{ComplexF64, 1}}
 
-const ZERO = Zero()
+    function ArrayState{N, P, T, A}(coeffs::A) where
+                                   {N, P<:Bases.Product{N}, T, A<:AbstractArray{T, N}}
+        @assert size(coeffs) == innerdims(P)
 
-function State{B, A}(x::B) where {B<:AbstractBasis, A<:AbstractArray}
-    coeffs = zero(A(undef, fill(dim(B), ndims(A))))
-    coeffs[CartesianIndex(index(x))] = oneunit(eltype(A))
-    State{B, A}(coeffs)
-end
-
-dim(x::State) = length(x.coeffs)
-rank(x::State) = ndims(x.coeffs)
-
-const MaybeBasis{B<:AbstractBasis, A<:AbstractArray} = Union{B, State{B, A}}
-
-# Add type arg
-@suppress_err Base.vec(x::MaybeBasis{B, A}) where {B, A<:AbstractVector} = convert(State{B}, x).vec
-
-Base.zero(::Type{State{B, V}}) where {B, V} = State{B, V}(zero(V(dim(B))))
-Base.zero(x::State) = typeof(x)(zero(x.vec))
-
-Base.convert(::Type{State{B, A1}}, x::State{B, A2}) where
-            {B, T, A1<:AbstractArray{<:Any, T}, A2<:AbstractArray{<:Any, T}} =
-    State{B, A1}(convert(A1, x.coeffs))
-Base.convert(::Type{A}, x::B) where {B<:AbstractBasis, A<:State{B}} = A(x)
-#Base.convert(::Type{State{B}}, x::State{B}) where B = x
-function Base.convert(::Type{B}, x::State{B, V}) where {B<:AbstractBasis, V<:AbstractVector}
-    T = eltype(x.coeffs)
-    nzs = x.coeffs .!= zero(T)
-    i = findfirst(!iszero, nzs)
-    cnt = count(nzs)
-
-    if cnt != 1 || x.coeffs[i] != oneunit(T)
-        throw(InexactError())
-    end
-
-    B[i]
-end
-function Base.convert(::Type{NTuple{N, B}}, x::State{B, A}) where
-                     {B<:AbstractBasis, A<:AbstractArray{<:Any, N}}
-    T = eltype(x.coeffs)
-    nzs = x.coeffs .!= zero(T)
-    ix = findfirst(!iszero, nzs)
-    cnt = count(nzs)
-
-    if cnt != 1 || x.coeffs[ix] != oneunit(T)
-        throw(InexactError())
-    end
-
-    (map(i -> B[i], convert(Tuple, ix))...)
-end
-
-Base.promote_rule(::Type{SS}, ::Type{SB}) where
-                 {B<:AbstractBasis, SS<:State{<:Bases.Sub{B}}, SB<:State{B}} = SB
-Base.promote_rule(::Type{<:Bases.MaybeSub{B}}, ::Type{S}) where
-                 {B<:AbstractBasis, S<:State{B}} = S
-
-@suppress_err for op in (:+, :-), T in (:(MaybeBasis{B}), :(Bra{MaybeBasis{B}}))
-    @eval begin
-        function Base.$op(a::$T, b::$T) where B<:AbstractBasis
-            a = convert(State{B}, a)
-            b = convert(State{B}, b)
-            ret = $op(a.coeffs, b.coeffs)
-
-            State{B, typeof(ret)}(ret)
-        end
+        new(coeffs)
     end
 end
+const VectorState{B<:AbstractBasis, T, V<:AbstractVector{T}} =
+    ArrayState{1, Bases.Product{1, B}, T, V}
 
-@suppress_err for T in (:(MaybeBasis{B}), :(Bra{<:MaybeBasis{B}}))
-    @eval begin
-        function Base.:*(x::Number, a::$T) where B<:AbstractBasis
-            a = convert(State{B}, a)
-            ret = a*a.coeffs
-        
-            State{B, typeof(ret)}(ret)
-        end
-        function Base.:*(a::$T, x::Number) where B<:AbstractBasis
-            a = convert(State{B}, a)
-            ret = coeffs(a)*x
-        
-            State{B, typeof(ret)}(ret)
-        end
-        function Base.:/(a::$T, x::Number) where B<:AbstractBasis
-            a = convert(State{B}, a)
-            ret = a.coeffs/x
-        
-            State{B, typeof(ret)}(ret)
-        end
-        function Base.:\(x::Number, a::$T) where B<:AbstractBasis
-            a = convert(State{B}, a)
-            ret = x \ a.coeffs
-        
-            State{B, typeof(ret)}(ret)
-        end
-        Base.:+(a::$T) where B<:AbstractBasis = a
+const CF64ArrayState{N, B<:Bases.Product{N}} =
+    ArrayState{N, B, ComplexF64, Array{ComplexF64, N}}
+const F64ArrayState{N, B<:Bases.Product} = ArrayState{N, B, Float64, Array{Float64, N}}
 
-        function Base.:-(a::$T) where B<:AbstractBasis
-            a = convert(State{B}, a)
-            ret = -a.coeffs
-            State{B, typeof(ret)}(ret)
-        end
+const CF64VectorState{B<:AbstractBasis} = VectorState{B, ComplexF64, Vector{ComplexF64}}
+const F64VectorState{B<:AbstractBasis} = VectorState{B, Float64, Vector{FloatF64}}
+
+ArrayState(B::Type{<:Bases.Product}, coeffs::AbstractArray) =
+    ArrayState{ndims(coeffs), B, eltype(coeffs), typeof(coeffs)}(coeffs)
+ArrayState(B::Type{<:AbstractBasis}, coeffs::AbstractVector) =
+    ArrayState(Bases.Product{1, Tuple{B}}, coeffs)
+
+ArrayState(A::Type{<:AbstractArray}, bs::Vararg{AbstractBasis}) =
+    ArrayState(A, Bases.Product{length(bs), typeof(bs)}(bs))
+function ArrayState(A::Type{<:AbstractArray}, b::Bases.Product)
+    ret = zero(similar(A, innerdims(B)...))
+    ret[CartesianIndex(innerindices(b))] = oneunit(eltype(A))
+    ArrayState{rank(b), typeof(b), eltype(A), A}(ret)
+end
+ArrayState(V::Type{<:AbstractVector}, b::AbstractBasis) = ArrayState(V, Bases.Product(b))
+ArrayState(A::Type{<:AbstractArray}, s::Scaled) = s.coeff*ArrayState(A, s.state)
+
+Base.promote_rule(S1::Type{<:Scaled}, S2::Type{<:Scaled}) =
+    Scaled{promote_type(basistype(S1), basistype(S2)), promote_type(eltype(S1), eltype(S2))}
+function Base.promote_rule(S1::Type{<:ArrayState{N, P}}, S2::Type{<:ArrayState{N, P}}) where
+                          {N, P<:Bases.Product{N}}
+    A = promote_type(reptype(S1), reptype(S2))
+    ArrayState{N, P, eltype(A), A}
+end
+#function Base.promote_rule(S1::Type{<:ArrayState{N}}, S2::Type{<:ArrayState{N}}) where N
+#    B = promote_type(basistype(S1), basistype(S2))
+#    A = promote_type(reptype(S1), reptype(S2))
+#    ArrayState{N, B, eltype(A), A}
+#end
+Base.promote_rule(S::Type{<:Scaled{B}}, ::Type{B}) where B<:AbstractBasis = S
+Base.promote_rule(S::Type{<:ArrayState{1, B}}, ::Type{<:Scaled{B}}) where B<:AbstractBasis = S
+Base.promote_rule(S::Type{<:ArrayState{N, P}}, ::Type{<:Scaled{P}}) where
+                 {N, P<:Bases.Product{N}} = S
+
+Base.convert(S::Type{<:Scaled}, b) = S(b)
+Base.convert(S::Type{<:ArrayState}, b) = S(b)
+Base.convert(S1::Type{Scaled{<:Bases.Rep{B}}}, s2::Scaled{<:Bases.Rep{B}}) where
+            B<:AbstractBasis =
+    S1(convert(eltype(S1), s2.coeff), s2.state)
+Base.convert(S1::Type{<:ArrayState{N, P}}, s2::ArrayState{N, P}) where {N, P<:Bases.Product{N}} =
+    S1(convert(reptype(S1), rep(s2)))
+#Base.convert(S1::Type{<:Scaled}, s2::ArrayState) = ...
+
+const Rep{B<:AbstractBasis, S<:MixedState{B}} = Union{Bases.Rep{B}, S}
+
+dim(S::Type{<:MixedState}) = dim(basistype(S))
+rank(S::Type{<:MixedState}) = rank(S)
+
+basistype(::Type{<:MixedState{<:Any, B}}) where B<:AbstractBasis = B
+basisdim(S::Type{<:MixedState}) = dim(basistype(S))
+
+Base.eltype(::Type{<:MixedState{<:Any, T}}) where T = T
+
+rep(s::Scaled) = (s.coeff, s.state)
+rep(s::ArrayState) = s.coeffs
+reptype(S::Type{<:Scaled}) = Tuple{eltype(S), basistype(S)}
+reptype(S::Type{<:ArrayState{<:Any, <:Any, <:Any, A}}) where A<:AbstractArray = A
+
+Base.zero(s::Scaled) = typeof(s)(zero(eltype(s)), s.state)
+Base.zero(s::ArrayState) = typeof(s)(zero(s.coeffs))
+@generated Base.zero(S::Type{<:ArrayState}) =
+    :(S(zero(similar(reptype(S), $(fill(dim(basistype(S)), N)...)))))
+
+macro commutes(expr::Expr)
+    _commutes(:identity, expr)
+end
+macro commute(f, expr::Expr)
+    _commutes(f, expr)
+end
+function _commutes(f, expr::Expr)
+    # Just assume we have a function expr
+
+    commed_expr = deepcopy(expr)
+
+    if commed_expr.args[1].head === :where
+        reverse!(@view commed_expr.args[1].args[1].args[2:end])
+    else
+        reverse!(@view commed_expr.args[1].args[2:end])
+    end
+
+    if f !== :identity
+        commed_expr.args[2] = :($f(commed_expr.args[2]))
+    end
+
+    quote
+        $(esc(expr))
+        $(esc(commed_expr))
     end
 end
 
-Base.:(==)(b1::Bra{S}, b2::Bra{S}) where S = b1.state == b2.state
+@commutes Base.:*(c::Number, b::AbstractBasis) = Scaled(c, b)
+@commutes Base.:*(c::Number, s::Scaled) = Scaled(c*s.coeff, s.state)
+@commutes Base.:*(c::Number, s::ArrayState) = ArrayState(basistype(s), c*rep(s))
+
+Base.:/(s::AbstractState, c::Number) = inv(c)*s
+Base.:\(c::Number, s::AbstractState) = inv(c)*s
+
+Base.:+(a::AbstractState) = a
+Base.:+(a::AbstractState, b::AbstractState) = +(promote(a, b)...)
+Base.:+(a::B, b::B) where B<:AbstractBasis = if a == b
+    Scaled(2, a)
+else
+    ArrayState(Array{Int}, a) + ArrayState(Array{Int}, b)
+end
+    
+Base.:+(a::Scaled{B, T}, b::Scaled{B, T}) where {B<:AbstractBasis, T} = if a.state == b.state
+    Scaled(a.coeff + b.coeff, a.state)
+else
+    ArrayState(Array{T}, a) + ArrayState(Array{T}, b)
+end
+Base.:+(a::ArrayState{N, P}, b::ArrayState{N, P}) where {N, P<:Bases.Product{N}} =
+    ArrayState(P, rep(a) + rep(b))
+
+Base.:-(a::Scaled) = Scaled(-a.coeff, a.state)
+Base.:-(a::ArrayState) = ArrayState(basistype(a), -rep(a))
+Base.:-(a::AbstractState, b::AbstractState) = a + -b
+
 Base.adjoint(s::AbstractState) = Bra(s)
 Base.:*(bra::Bra, ket::AbstractState) = overlap(bra.state, ket)
-Base.:*(x::Number, a::Zero) = Zero()
-Base.:*(a::Zero, x::Number) = Zero()
 
+overlap(a::MaybeMixed{B}, b::MaybeMixed{B}) where B<:AbstractBasis = overlap(promote(a, b)...)
+
+overlap(::Zero, ::Zero) = 0
 overlap(a::B, b::B) where B<:AbstractBasis = a == b
-overlap(a::Zero, b::S) where S<:AbstractState = 0
-overlap(a::S, b::Zero) where S<:AbstractState = 0
-overlap(a::Zero, b::Zero) = 0
-overlap(a::MaybeBasis{B}, b::Bases.Sub{B}) where B<:AbstractBasis = overlap(a, convert(B, b))
-overlap(a::Bases.Sub{B}, b::MaybeBasis{B}) where B<:AbstractBasis = overlap(convert(B, a), b)
-function overlap(a::MaybeBasis{B}, b::MaybeBasis{B}) where B<:AbstractBasis
-    a = convert(State{B}, a)
-    a.coeffs'b.coeffs
-end
+overlap(a::Bases.Rep{B}, b::Bases.Rep{B}) where B<:AbstractBasis = inner(a) == inner(b)
+overlap(a::Bases.MaybeNeg{B}, b::Bases.MaybeNeg{B}) where B<:AbstractBasis = -(inner(a) == inner(b))
+@commutes conj overlap(a::Bases.Neg{B}, b::MaybeMixed{B}) where B<:AbstractBasis = -overlap(inner(a), b)
 
-end # module States
+@commutes overlap(::Zero, b::AbstractState) = 0
+@commutes overlap(::Zero, b::MixedState) = zero(eltype(b))
+
+@commutes conj overlap(a::Scaled{<:Bases.Rep{B}}, b::Scaled{<:Bases.Rep{B}}) =
+    conj(a.coeff)*b.coeff*overlap(a.state, b.state)
+@commutes conj overlap(a::ArrayState{N, P}, b::ArrayState{N, P}) where {N, P<:Bases.Product{N}} =
+    vec(rep(a))'vec(rep(b))
+
+@commutes conj overlap(a::Scaled{<:Bases.Rep{B}}, b::MaybeMixed{B}) where B<:AbstractBasis =
+    conj(a.coeff)*overlap(a.state, b)
+
+@commutes conj overlap(a::Bases.Rep{B}, b::VectorState{B}) where B<:AbstractBasis =
+    rep(b)[index(inner(a))]
+@commutes conj overlap(a::Bases.Index{B}, b::VectorState{B}) where B<:AbstractBasis =
+    rep(b)[index(a)]
+## Make this more efficient in the Bases.Index{P} case somehow?
+@commutes conj overlap(a::Bases.Rep{P}, b::ArrayState{N, P}) where {N, P<:Bases.Product{N}} =
+    rep(b)[CartesianIndex(innerindices(inner(a.state)))]

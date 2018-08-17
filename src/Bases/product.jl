@@ -29,6 +29,7 @@ end
 Product(args::Vararg{AbstractBasis, N}) where N =
     Product{N, typeof(args)}(args)
 
+rank(::Type{<:AbstractBasis}) = 1
 rank(::Type{<:Product{N}}) where N = N
 
 innertype(::Type{Product{1, Tuple{B}}}) where B<:AbstractBasis = B
@@ -61,9 +62,22 @@ end
 ## Note that we consider the products X*Y and Y*X as distinct (yet of course isomorphic).
 Base.:(==)(a::B, b::B) where B<:Product = a.states == b.states
 
-Base.convert(::Type{Product{1, Tuple{B}}}, b::B) where B<:AbstractBasis = Product{1, Tuple{B}}(b)
+@generated function Base.promote_rule(P1::Type{<:Product{N}}, P2::Type{<:Product{N}}) where N
+    ty_args = map(promote_type, innertypes(P1), innertypes(P2))
+
+    :(Product{N, Tuple{$(ty_args...)}})
+end
+Base.convert(P1::Type{<:Product{N}}, p2::Product{N}) where N =
+    P1(map(convert, innertypes(P1), p2.states))
+
 Base.promote_rule(::Type{Product{1, Tuple{B}}}, ::Type{B}) where B<:AbstractBasis =
     Product{1, Tuple{B}}
+Base.convert(::Type{Product{1, Tuple{B}}}, b::B) where B<:AbstractBasis = Product{1, Tuple{B}}(b)
+
+## Should these exists? We lose a sign both ways.
+Base.convert(::Type{Product{N, NTuple{N, B}} where N}, b::Slater{B}) where B<:AbstractBasis =
+    Product(Tuple(B[i] for i = 1:dim(B) if b.bits[i]))
+Base.convert(::Type{Slater{B}}, b::Product{N, NTuple{N, B}}) where N = Slater{B}(b.states)
 
 innerindices(b::Product) = map(index, b.states)
 
