@@ -1,5 +1,10 @@
+module States
+using ..Bases
+using ..AbstractState
+
 abstract type MixedState{N, B<:AbstractBasis, T} <: AbstractState end
 
+struct Bra{S<:AbstractState} end
 struct Zero <: AbstractState end
 
 struct Scaled{B<:AbstractBasis, T} <: MixedState{B, T}
@@ -185,3 +190,5 @@ overlap(a::Bases.MaybeNeg{B}, b::Bases.MaybeNeg{B}) where B<:AbstractBasis = -(i
 ## Make this more efficient in the Bases.Index{P} case somehow?
 @commutes conj overlap(a::Bases.Rep{P}, b::ArrayState{N, P}) where {N, P<:Bases.Product{N}} =
     rep(b)[CartesianIndex(innerindices(inner(a.state)))]
+
+end # module States
