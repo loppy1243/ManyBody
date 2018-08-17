@@ -75,8 +75,9 @@ function indexbasis(::Type{Product{N, BS}}, i::Int) where {N, BS<:NTuple{N, Abst
     Product{N, BS}(Tuple(ixs))
 end
 
-dim(::Type{Product{N, BS}}) where {N, BS<:NTuple{N, AbstractBasis}} =
-    prod(dim, BS.parameters)
+innerdims(::Type{Product{N, BS}}) where {N, BS<:NTuple{N, AbstractBasis}} =
+    map(dim, BS.parameters)
+dim(B::Type{<:Product}) = prod(dims(B))
 rank(::Type{<:Product{N}}) where N = N
 
 ## Would an explicit tensor() function be better?
