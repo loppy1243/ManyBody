@@ -1,13 +1,14 @@
-module States
+@reexport module States
+export ArrayState, F64ArrayState, CF64ArrayState, VectorState, overlap
 using ..Bases
 using ..AbstractState
 
-abstract type MixedState{N, B<:AbstractBasis, T} <: AbstractState end
+abstract type Mixed{N, B<:AbstractBasis, T} <: AbstractState end
 
 struct Bra{S<:AbstractState} end
 struct Zero <: AbstractState end
 
-struct Scaled{B<:AbstractBasis, T} <: MixedState{B, T}
+struct Scaled{B<:AbstractBasis, T} <: Mixed{B, T}
     coeff::T
     state::B
 
@@ -26,7 +27,7 @@ Scaled(T::Type, b::Bases.Product{1}) = Scaled(T, inner(b))
 Scaled(c, b::Bases.Product{1}) = Scaled(c, inner(b))
 
 ## Allow B<:Bases.Rep{<:Bases.Product{N}}?
-struct ArrayState{N, B<:Bases.Product{N}, T, A<:AbstractArray{T, N}} <: MixedState{B, T}
+struct ArrayState{N, B<:Bases.Product{N}, T, A<:AbstractArray{T, N}} <: Mixed{B, T}
     coeffs::A
 
     function ArrayState{N, P, T, A}(coeffs::A) where
@@ -87,20 +88,18 @@ Base.convert(S1::Type{<:ArrayState{N, P}}, s2::ArrayState{N, P}) where {N, P<:Ba
     S1(convert(reptype(S1), rep(s2)))
 #Base.convert(S1::Type{<:Scaled}, s2::ArrayState) = ...
 
-const Rep{B<:AbstractBasis, S<:MixedState{B}} = Union{Bases.Rep{B}, S}
+const Rep{B<:AbstractBasis, S<:Mixed{B}} = Union{Bases.Rep{B}, S}
 
-dim(S::Type{<:MixedState}) = dim(basistype(S))
-rank(S::Type{<:MixedState}) = rank(S)
+Bases.dim(S::Type{<:Mixed}) = dim(basistype(S))
+Bases.rank(S::Type{<:Mixed}) = rank(S)
+ManyBody.basistype(::Type{<:Mixed{<:Any, B}}) where B<:AbstractBasis = B
 
-basistype(::Type{<:MixedState{<:Any, B}}) where B<:AbstractBasis = B
-basisdim(S::Type{<:MixedState}) = dim(basistype(S))
+Base.eltype(::Type{<:Mixed{<:Any, T}}) where T = T
 
-Base.eltype(::Type{<:MixedState{<:Any, T}}) where T = T
-
-rep(s::Scaled) = (s.coeff, s.state)
-rep(s::ArrayState) = s.coeffs
-reptype(S::Type{<:Scaled}) = Tuple{eltype(S), basistype(S)}
-reptype(S::Type{<:ArrayState{<:Any, <:Any, <:Any, A}}) where A<:AbstractArray = A
+ManyBody.rep(s::Scaled) = (s.coeff, s.state)
+ManyBody.rep(s::ArrayState) = s.coeffs
+ManyBody.reptype(S::Type{<:Scaled}) = Tuple{eltype(S), basistype(S)}
+ManyBody.reptype(S::Type{<:ArrayState{<:Any, <:Any, <:Any, A}}) where A<:AbstractArray = A
 
 Base.zero(s::Scaled) = typeof(s)(zero(eltype(s)), s.state)
 Base.zero(s::ArrayState) = typeof(s)(zero(s.coeffs))
@@ -173,7 +172,7 @@ overlap(a::Bases.MaybeNeg{B}, b::Bases.MaybeNeg{B}) where B<:AbstractBasis = -(i
 @commutes conj overlap(a::Bases.Neg{B}, b::MaybeMixed{B}) where B<:AbstractBasis = -overlap(inner(a), b)
 
 @commutes overlap(::Zero, b::AbstractState) = 0
-@commutes overlap(::Zero, b::MixedState) = zero(eltype(b))
+@commutes overlap(::Zero, b::Mixed) = zero(eltype(b))
 
 @commutes conj overlap(a::Scaled{<:Bases.Rep{B}}, b::Scaled{<:Bases.Rep{B}}) =
     conj(a.coeff)*b.coeff*overlap(a.state, b.state)
