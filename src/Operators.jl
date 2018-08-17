@@ -1,80 +1,95 @@
 @reexport module Operators
 export AbstractOperator, ActionOperator, CF64ActionOperator, F64ActionOperator,
        FunctionOperator, CF64FunctionOperator, F64FunctionOperator, ArrayOperator,
-       CF64ArrayOperator, F64ArrayOperator, rep, reptype, tabulate, refop, RaiseOp, LowerOp,
-       RaiseLowerOps, A, refop, contract, normord
+       CF64ArrayOperator, F64ArrayOperator, tabulate, refop, RaiseOp, LowerOp, RaiseLowerOps,
+       refop, normord
 
 using Base.Cartesian
 using Combinatorics: levicivita
 using JuliaUtil: cartesian_pow
 using ..Bases
 
-abstract type AbstractOperator{N, B<:AbstractBasis, T} end
-struct ActionOperator{N, B<:AbstractBasis, T, F<:Function} <: AbstractOperator{N, B, T}
+abstract type AbstractOperator{N, B<:Bases.Product{N}, T} end
+struct ActionOperator{N, B<:Bases.Product{N}, T, F<:Function} <: AbstractOperator{N, B, T}
     rep::F
 end
-const CF64ActionOperator{N, B<:AbstractBasis} = ActionOperator{N, B, ComplexF64}
-const F64ActionOperator{N, B<:AbstractBasis} = ActionOperator{N, B, Float64}
+const CF64ActionOperator{N, B<:Bases.Product{N}} = ActionOperator{N, B, ComplexF64}
+const F64ActionOperator{N, B<:Bases.Product{N}} = ActionOperator{N, B, Float64}
 
-ActionOperator{N, B, T}(f::Function) where {N, B<:AbstractBasis, T} =
-    ActionOperator{N, B, T, typeof(f)}(f)
+## ?DELETEME
+#ActionOperator{N, B, T}(f::Function) where {N, B<:Bases.Product{N}, T} =
+#    ActionOperator{N, B, T, typeof(f)}(f)
 
-struct FunctionOperator{N, B<:AbstractBasis, T, F<:Function} <: AbstractOperator{N, B, T}
+struct FunctionOperator{N, B<:Bases.Product{N}, T, F<:Function} <: AbstractOperator{N, B, T}
     rep::F
 end
-const CF64FunctionOperator{N, B<:AbstractBasis} = FunctionOperator{N, B, ComplexF64}
-const F64FunctionOperator{N, B<:AbstractBasis} = FunctionOperator{N, B, Float64}
+const CF64FunctionOperator{N, B<:Bases.Product{N}} = FunctionOperator{N, B, ComplexF64}
+const F64FunctionOperator{N, B<:Bases.Product{N}} = FunctionOperator{N, B, Float64}
 
-FunctionOperator{N, B, T}(f::Function) where {N, B<:AbstractBasis, T} =
-    FunctionOperator{N, B, T, typeof(f)}(f)
-
-struct ArrayOperator{N, B<:AbstractBasis, T, A<:AbstractArray{T}} <: AbstractOperator{N, B, T}
+## ?DELETEME
+#FunctionOperator{N, B, T}(f::Function) where {N, B<:Bases.Product{N}, T} =
+#    FunctionOperator{N, B, T, typeof(f)}(f)
+#
+struct ArrayOperator{N, B<:Bases.Product{N}, T, A<:AbstractArray{T}} <: AbstractOperator{N, B, T}
     rep::A
 
     function ArrayOperator{N, B, T, A}(rep::A) where
-                                      {N, B<:AbstractBasis, T, A<:AbstractArray{T}}
-        @assert ndims(rep) == 2N
+                                      {N, B<:Bases.Product{N}, T, A<:AbstractArray{T, N}}
+        @assert size(rep) == innerdims(B)
         new(rep)
     end
 end
-const CF64ArrayOperator{N, B<:AbstractBasis} =
+const CF64ArrayOperator{N, B<:Bases.Product{N}} =
     ArrayOperator{N, B, ComplexF64, <:Array{ComplexF64}}
-const F64ArrayOperator{N, B<:AbstractBasis} =
+const F64ArrayOperator{N, B<:Bases.Product{N}} =
     ArrayOperator{N, B, Float64, <:Array{Float64}}
 
-function ArrayOperator{N, B, T, A}(a::AbstractArray) where
-                                  {N, B<:AbstractBasis, T, A<:AbstractArray{T}}
-    a = convert(A, a)
-    ArrayOperator{N, B, T, A}(a)
-end
-function ArrayOperator{N, B, T}(a::AbstractArray) where {N, B<:AbstractBasis, T}
-    a = convert(AbstractArray{T}, a)
-    ArrayOperator{N, B, T, typeof(a)}(a)
-end
-ArrayOperator{N, B}(a::AbstractArray) where {N, B<:AbstractBasis} =
-    ArrayOperator{N, B, eltype(a), typeof(a)}(a)
-function ArrayOperator(B::AbstractBasis, a::AbstractArray)
-    @assert iseven(ndims(a))
-    ArrayOperator{div(ndims(a), 2), B, eltype(a), typeof(a)}(a)
-end
+## ?DELETEME
+#function ArrayOperator{N, B, T, A}(a::AbstractArray) where
+#                                  {N, B<:Bases.Product{N}, T, A<:AbstractArray{T}}
+#    a = convert(A, a)
+#    ArrayOperator{N, B, T, A}(a)
+#end
+#function ArrayOperator{N, B, T}(a::AbstractArray) where {N, B<:Bases.Product{N}, T}
+#    a = convert(AbstractArray{T}, a)
+#    ArrayOperator{N, B, T, typeof(a)}(a)
+#end
+#ArrayOperator{N, B}(a::AbstractArray) where {N, B<:Bases.Product{N}} =
+#    ArrayOperator{N, B, eltype(a), typeof(a)}(a)
+ArrayOperator(B::Type{<:Bases.Product}, a::AbstractArray) =
+    ArrayOperator{ndims(a), B, eltype(a), typeof(a)}(a)
 
-rep(op::AbstractOperator) = op.rep
-reptype(op::AbstractOperator) = reptype(typeof(op))
-reptype(::Type{ArrayOperator{<:Any, <:Any, <:Any, A}}) where A = A
-reptype(::Type{ActionOperator{<:Any, <:Any, <:Any, F}}) where F = F
-reptype(::Type{FunctionOperator{<:Any, <:Any, <:Any, F}}) where F = F
+ManyBody.rep(op::Union{ActionOperator, FunctionOperator, ArrayOperator}) = op.rep
+ManyBody.reptype(op::AbstractOperator) = reptype(typeof(op))
+ManyBody.reptype(::Type{<:ArrayOperator{<:Any, <:Any, <:Any, A}}) where A = A
+ManyBody.reptype(::Type{<:ActionOperator{<:Any, <:Any, <:Any, F}}) where F = F
+ManyBody.reptype(::Type{<:FunctionOperator{<:Any, <:Any, <:Any, F}}) where F = F
 Base.eltype(::Type{<:AbstractOperator{<:Any, <:Any, T}}) where T = T
-Bases.basistype(::Type{<:AbstractOperator{<:Any, B, <:Any}}) where B = B
-Bases.basistype(x::AbstractOperator) = Bases.basistype(typeof(x))
+
+ManyBody.basistype(::Type{<:AbstractOperator{<:Any, B, <:Any}}) where B = B
+ManyBody.basistype(x::AbstractOperator) = basistype(typeof(x))
+
+## (AbstractBasis --> Product) line
+##############################################################################################
 
 ## For now, this does not work
 #(op::AbstractOperator{N, <:Any, T})(args...) where {N, T} = op(Array{T, N}, args...)
 ## Work around
-(op::ActionOperator{N, <:Any, T})(args...) where {N, T} = op(Array{T, N}, args...)
-(op::FunctionOperator{N, <:Any, T})(args...) where {N, T} = op(Array{T, N}, args...)
-(op::ArrayOperator{N, <:Any, T})(args...) where {N, T} = op(Array{T, N}, args...)
+(op::ActionOperator{N, <:Any, T})(args...) where {N, T} = applyop(Array{T, N}, op, args...)
+(op::FunctionOperator{N, <:Any, T})(args...) where {N, T} = applyop(Array{T, N}, op, args...)
+(op::ArrayOperator{N, <:Any, T})(args...) where {N, T} = applyop(Array{T, N}, op, args...)
+## @generate to avoid splat?
+applyop(T, op::AbstractOperator{N, B}, arg1::B, arg2::B) where {N, B<:Bases.Product{N}} =
+    applyop(T, op, arg1.states, args2.states)
+@generated function applyop(T, op::AbstractOperator{N, B}, args::Vararg{<:Any, N2}) where
+                           {N, N2, B<:Bases.Product{N}}
+    @assert N2 = 2N
+    :(applyop(T, op, args[1:$N], args[$N+1:end]))
+end
+## FIXME: Finish
+#applyop(T::Type, op::ActionOperator{N, B}, argsl::B, argsr::B) = ...
 @generated (op::ActionOperator{N, B, T})(args::Vararg{B, N}) where
-                                          {N, B<:AbstractBasis, T, A<:AbstractArray{T, N}} =
+                                        {N, B<:AbstractBasis, T, A<:AbstractArray{T, N}} =
     :(@ncall($N, rep(op), i -> args[i]))
 (op::ActionOperator{N, B, T})(::Type{A}, args::Vararg{B, N}) where
                                {N, B<:AbstractBasis, T, A<:AbstractArray{T, N}} =

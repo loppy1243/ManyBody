@@ -2,9 +2,10 @@ module Exec
 
 include("src/ManyBody.jl")
 
+using .ManyBody
+using .ManyBody.Operators: A
 using Combinatorics: combinations
 using JuliaUtil: cartesian_pow
-using .ManyBody
 
 Bases.@defSub NPairing{L, P} <: Bases.Slater{Bases.Pairing{L}} begin
     SP = Bases.Pairing{L}
