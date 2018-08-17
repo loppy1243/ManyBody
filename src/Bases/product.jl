@@ -30,7 +30,7 @@ Product(args::Vararg{AbstractBasis, N}) where N =
 Base.:(==)(a::B, b::B) where B<:Product = a.states == b.states
 
 Base.convert(::Type{Product{1, Tuple{B}}}, b::B) where B<:AbstractBasis = Product{1, Tuple{B}}(b)
-Base.promote(::Type{Product{1, Tuple{B}}}, ::Type{B}) where B<:AbstractBasis =
+Base.promote_rule(::Type{Product{1, Tuple{B}}}, ::Type{B}) where B<:AbstractBasis =
     Product{1, Tuple{B}}
 
 index(b::Product) = index(b.states[1]) + sum(enumerate(b.states[2:end])) do I
