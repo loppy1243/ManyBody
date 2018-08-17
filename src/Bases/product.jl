@@ -29,6 +29,9 @@ end
 Product(args::Vararg{AbstractBasis, N}) where N =
     Product{N, typeof(args)}(args)
 
+innertype(::Type{Product{1, Tuple{B}}}) where B<:AbstractBasis = B
+inner(b::Product{1}) = b.states[1]
+
 @generated function normalize(b::Product{N, BS}) where {N, BS<:NTuple{N, AbstractBasis}}
     c = 0
     xs = map(BS.parameters) do B

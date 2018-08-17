@@ -18,7 +18,7 @@ include("indexbasis.jl")
 include("subbasis.jl")
 
 ## FIXME: Move Neg so that this works
-const Rep{B<:AbstractBasis} = Union{B, Sub{B}, Index{B}, Neg{B}}
+const Rep{B<:AbstractBasis} = Union{B, Sub{B}, Index{B}, Neg{B}, Product{1, Tuple{B}}}
 
 include("pairing.jl")
 include("refstates.jl")
