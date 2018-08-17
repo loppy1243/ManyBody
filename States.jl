@@ -5,13 +5,15 @@ struct Zero <: AbstractState end
 struct Scaled{B<:AbstractBasis, T} <: MixedState{1, B, T}
     coeff::T
     state::B
+
+    Scaled{B, T}(c::T, b::B) where {B<:AbstractBasis, T} = new(c, b)
+    Scaled{B, T}(b::B) where {B<:AbstractBasis, T} = new(one(T), b)
+    Scaled{B, T}(b::Neg{B}) where {B<:AbstractBasis, T} = new(-one(T), inner(b))
+    Scaled{B, T}(c::T, b::Neg{B}) where {B<:AbstractBasis, T} = new(-c, inner(b))
 end
 const CF64Scaled{B<:AbstractBasis} <: Scaled{B, ComplexF64}
-Scaled{B, T}(b::B) where {B<:AbstractBasis, T} = Scaled{B, T}(one(T), b)
-Scaled(::Type{T}, b::B) where {T, B<:AbstractBasis} = Scaled{B, T}(one(T), b)
+Scaled(::Type{T}, b::AbstractBasis) where {T, B<:AbstractBasis} = Scaled{B, T}(one(T), b)
 Scaled(c, b::B) where B<:AbstractBasis = Scaled{B, typeof(c)}(c, b)
-Scaled(::Type{T}, b::Neg) where T = Scaled(-one(T), inner(b))
-Scaled(c, b::Neg) = Scaled(-c, inner(b))
 
 struct ArrayState{N, B<:AbstractBasis, T, A<:AbstractArray{T, N}} <: MixedState{N, B, T}
     coeffs::A

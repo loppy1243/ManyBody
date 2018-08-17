@@ -1,3 +1,5 @@
+export normalize, rank
+
 # Slater{B} == Product{N, NTuple{N, B}} where N for 0 <= N <= dim(B)
 
 #abstract type AbstractProduct <: AbstractBasis
@@ -9,6 +11,7 @@
 struct Neg{B<:AbstractBasis} <: AbstractBasis
     state::B
 end
+const MaybeNeg{B<:AbstractBasis} = Union{B, Neg{B}}
 #Neg(state::AbstractBasis) = Neg{typeof(state)}(state)
 Base.:+(s::AbstractState) = s
 Base.:-(b::AbstractBasis) = Neg(b)
@@ -25,6 +28,26 @@ struct Product{N, BS<:NTuple{N, AbstractBasis}} <: AbstractBasis
 end
 Product(args::Vararg{AbstractBasis, N}) where N =
     Product{N, typeof(args)}(args)
+
+@generated function normalize(b::Product{N, BS}) where {N, BS<:NTuple{N, AbstractBasis}}
+    c = 0
+    xs = map(BS.parameters) do B
+        if B <: Neg
+            c += 1
+            (:(inner(b.states[$i])), innertype(B))
+        else
+            (:(b.states[$i]), B)
+        end
+    end
+    exprs, tys = zip(xs...)
+    prod_expr = :(Product{N, Tuple{$(tys...)}}(($(exprs...),)))
+
+    if iseven(c)
+        prod_expr
+    else
+        :(Neg($prod_expr))
+    end
+end
 
 ## Note that we consider the products X*Y and Y*X as distinct (yet of course isomorphic).
 Base.:(==)(a::B, b::B) where B<:Product = a.states == b.states
@@ -71,14 +94,26 @@ rank(::Type{<:Product{N}}) where N = N
 #    Product(Tuple(ret))
 #end
 @generated function Base.:*(bs::AbstractBasis...)
+    c = 0
     exprs = map(enumerate(bs)) do X
         i, b = X
         if b <: Product
             [:(bs[$i].states[$j]) for j = 1:rank(b)]
+        elseif b <: Neg{<:Product}
+            c += 1
+            [:(inner(bs[$i]).states[$j]) for j = 1:rank(innertype(b))]
+        elseif b <: Neg
+            c += 1
+            [:(inner(bs[$i]))]
         else
             [:(bs[$i])]
         end
     end |> x -> reduce(vcat, x)
 
-    :(Product{$(length(bs)), $bs}(($(exprs...),)))
+    prod_expr = :(Product{$(length(bs)), $bs}(($(exprs...),)))
+    if iseven(c)
+        prod_expr
+    else
+        :(Neg($prod_expr))
+    end
 end
