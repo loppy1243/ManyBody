@@ -10,7 +10,7 @@ struct Neg{B<:AbstractBasis} <: AbstractBasis
     state::B
 end
 #Neg(state::AbstractBasis) = Neg{typeof(state)}(state)
-Base.:+(b::AbstractBasis) = b
+Base.:+(s::AbstractState) = s
 Base.:-(b::AbstractBasis) = Neg(b)
 
 innertype(::Type{Neg{B}}) where B<:AbstractBasis = B
@@ -26,6 +26,7 @@ end
 Product(args::Vararg{AbstractBasis, N}) where N =
     Product{N, typeof(args)}(args)
 
+## Note that we consider the products X*Y and Y*X as distinct (yet of course isomorphic).
 Base.:(==)(a::B, b::B) where B<:Product = a.states == b.states
 
 Base.convert(::Type{Product{1, Tuple{B}}}, b::B) where B<:AbstractBasis = Product{1, Tuple{B}}(b)
@@ -53,17 +54,31 @@ end
 
 dim(::Type{Product{N, BS}}) where {N, BS<:NTuple{N, AbstractBasis}} =
     prod(dim, BS.parameters)
+rank(::Type{<:Product{N}}) where N = N
 
-_states(a::AbstractBasis) = (a,)
-_states(a::Product) = a.states
-## Could @generate to statically preallocate ret
-function Base.:*(bs::AbstractBasis...)
-    ret = AbstractBasis[]
-    for b in bs
-        for s in _states(b)
-            push!(ret, s)
+## Would an explicit tensor() function be better?
+
+#_states(a::AbstractBasis) = (a,)
+#_states(a::Product) = a.states
+#function Base.:*(bs::AbstractBasis...)
+#    ret = AbstractBasis[]
+#    for b in bs
+#        for s in _states(b)
+#            push!(ret, s)
+#        end
+#    end
+#
+#    Product(Tuple(ret))
+#end
+@generated function Base.:*(bs::AbstractBasis...)
+    exprs = map(enumerate(bs)) do X
+        i, b = X
+        if b <: Product
+            [:(bs[$i].states[$j]) for j = 1:rank(b)]
+        else
+            [:(bs[$i])]
         end
-    end
+    end |> x -> reduce(vcat, x)
 
-    Product(Tuple(ret))
+    :(Product{$(length(bs)), $bs}(($(exprs...),)))
 end
