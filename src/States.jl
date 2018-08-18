@@ -1,7 +1,7 @@
 @reexport module States
 export ArrayState, F64ArrayState, CF64ArrayState, VectorState, overlap
 using ..Bases
-using ..AbstractState
+using ..AbstractState, ..@commutes
 
 abstract type Mixed{N, B<:AbstractBasis, T} <: AbstractState end
 
@@ -105,33 +105,6 @@ Base.zero(s::Scaled) = typeof(s)(zero(eltype(s)), s.state)
 Base.zero(s::ArrayState) = typeof(s)(zero(s.coeffs))
 @generated Base.zero(S::Type{<:ArrayState}) =
     :(S(zero(similar(reptype(S), $(fill(dim(basistype(S)), N)...)))))
-
-macro commutes(expr::Expr)
-    _commutes(:identity, expr)
-end
-macro commute(f, expr::Expr)
-    _commutes(f, expr)
-end
-function _commutes(f, expr::Expr)
-    # Just assume we have a function expr
-
-    commed_expr = deepcopy(expr)
-
-    if commed_expr.args[1].head === :where
-        reverse!(@view commed_expr.args[1].args[1].args[2:end])
-    else
-        reverse!(@view commed_expr.args[1].args[2:end])
-    end
-
-    if f !== :identity
-        commed_expr.args[2] = :($f(commed_expr.args[2]))
-    end
-
-    quote
-        $(esc(expr))
-        $(esc(commed_expr))
-    end
-end
 
 @commutes Base.:*(c::Number, b::AbstractBasis) = Scaled(c, b)
 @commutes Base.:*(c::Number, s::Scaled) = Scaled(c*s.coeff, s.state)

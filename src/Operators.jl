@@ -69,46 +69,57 @@ Base.eltype(::Type{<:AbstractOperator{<:Any, <:Any, T}}) where T = T
 ManyBody.basistype(::Type{<:AbstractOperator{<:Any, B, <:Any}}) where B = B
 ManyBody.basistype(x::AbstractOperator) = basistype(typeof(x))
 
-## (AbstractBasis --> Product) line
-##############################################################################################
-
+### Definition
 ## For now, this does not work
 #(op::AbstractOperator{N, <:Any, T})(args...) where {N, T} = op(Array{T, N}, args...)
 ## Work around
-(op::ActionOperator{N, <:Any, T})(args...) where {N, T} = applyop(Array{T, N}, op, args...)
-(op::FunctionOperator{N, <:Any, T})(args...) where {N, T} = applyop(Array{T, N}, op, args...)
-(op::ArrayOperator{N, <:Any, T})(args...) where {N, T} = applyop(Array{T, N}, op, args...)
-## @generate to avoid splat?
-applyop(T, op::AbstractOperator{N, B}, arg1::B, arg2::B) where {N, B<:Bases.Product{N}} =
-    applyop(T, op, arg1.states, args2.states)
-@generated function applyop(T, op::AbstractOperator{N, B}, args::Vararg{<:Any, N2}) where
-                           {N, N2, B<:Bases.Product{N}}
-    @assert N2 = 2N
-    :(applyop(T, op, args[1:$N], args[$N+1:end]))
-end
-## FIXME: Finish
-#applyop(T::Type, op::ActionOperator{N, B}, argsl::B, argsr::B) = ...
-@generated (op::ActionOperator{N, B, T})(args::Vararg{B, N}) where
-                                        {N, B<:AbstractBasis, T, A<:AbstractArray{T, N}} =
-    :(@ncall($N, rep(op), i -> args[i]))
-(op::ActionOperator{N, B, T})(::Type{A}, args::Vararg{B, N}) where
-                               {N, B<:AbstractBasis, T, A<:AbstractArray{T, N}} =
-    convert(A, op(args...))
-@generated (op::ActionOperator{N, B})(::Type{A}, state::AbstractArray{<:Any, N}) where
-                                       {N, B<:AbstractBasis, T, A<:AbstractArray{T, N}} = quote
-    ret = similar(A, $(fill(dim(B), N)...))
-    @nloops $N b (_ -> B) begin
-        @nref($N, ret, i -> index(b_i)) = @nref($N, state, i -> index(b_i))*@ncall($N, rep(op), b)
-    end
+(op::ActionOperator)(args...) = applyop(op, args...)
+(op::FunctionOperator)(args...) = applyop(op, args...)
+(op::ArrayOperator)(args...) = applyop(op, args...)
 
-    ret
+### Kernels
+applyop(op::ActionOperator{N, B}, arg::B) where {N, B<:Bases.Product{N}} =
+    rep(op)(convert(basistype(op), arg))
+applyop(op::FunctionOperator{N}, arg::B) where {N, B<:Bases.Product{N}} = sum(B) do b
+    rep(op)(b, arg)*b
 end
 
-@generated function Base.getindex(op::AbstractOperator{N, B}, args::Vararg{B, N2}) where
-                                 {N, N2, B<:AbstractBasis}
-    @assert N2 == 2N
-    :(@ncall($N2, matrixelem, op, i -> args[i]))
+### Dispatch
+applyop(op::AbstractOperator{N}, arg::Bases.Product{N}) =
+    applyop(op, convert(basistype(B), arg))
+applyop(op::AbstractOperator, arg::AbstractBasis) = applyop(op, Bases.Product(arg))
+applyop(op::AbstractOperator{N, B}, arg::Bases.Rep{B}) where {N, B<:Bases.Product{N}} =
+    applyop(op, inner(arg))
+applyop(op::AbstractOperator, arg::Neg) = -applyop(op, inner(arg))
+applyop(op::AbstractOperator{N}, args::Vararg{AbstractBasis, N}) where N =
+    applyop(T, op, Bases.Product(args))
+
+applyop(op::AbstractOperator, arg::States.Scaled) = arg.coeff*applyop(op, arg.state)
+applyop(op::AbstractOperator, arg::ArrayState) = sum(findall(!iszero, rep(arg))) do I
+    arg[I] * applyop(op, Bases.Product(map(getindex,
+                                           innertypes(basistype(arg)), Tuple(I))))
 end
+
+## (AbstractBasis --> Product) line
+##############################################################################################
+
+### Definition
+Base.getindex(op::AbstractOperator, args...) = matrixelem(op, args...)
+
+### Kernels
+matrixelem(op::FunctionOperator{N, P}, argsl::P, argsr::P) where {N, P<:Bases.Product{N}} =
+    convert(eltype(op), rep(op)(argsl, argsr))
+## ???????
+#@generated function matrixelem(op::ArrayOperator{N, P}, argsl::P1, argsr::P2) where
+#                              {N, P<:Bases.Product{N}, P1<:Bases.Product{N}, P2<:Bases.Product{N}}
+#    for (B, B1, B2) in zip(innertypes.(P, P1, P2)...)
+#        op1, op2 = map((B1, B2)) do X
+#            if X === Bases.Index{B}
+#                :index
+#            elseif (Y = promote_type(B, X)) !== Any
+#                
+#    end
+#end
 
 @generated matrixelem(op::FunctionOperator{N, B, T}, args::Vararg{B, N2}) where
                      {N, N2, B<:AbstractBasis, T} =

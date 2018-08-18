@@ -8,7 +8,6 @@ Index(s::AbstractBasis) = Index{typeof(s)}(index(s))
 Base.:(==)(a::MaybeIndex{B}, b::MaybeIndex{B}) where B<:AbstractBasis = index(a) == index(b)
 Base.promote_rule(::Type{Index{B}}, ::Type{B}) where B<:AbstractBasis = B
 
-innertype(::Type{Index{B}}) where B<:AbstractBasis = B
 inner(i::Index) = innertype(i)[i.index]
 
 index(s::Index) = s.index

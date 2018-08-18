@@ -1,8 +1,6 @@
 ### Interface that an AbstractBasis must implement
-# Unexported, optional
-#noexport Generation
-# Defined in this file
-export basis, basistype, dim,  index, indexbasis, inner, innertype
+export basis, basistype, supbasistype, dim, index, indexbasis, inner, innertype
+using ..@commutes
 
 abstract type Generation end
 struct Provided <: Generation end
@@ -37,11 +35,17 @@ dim(B::Type{<:AbstractBasis}) = _dim(B, Generation(B))
 _dim(B::Type{<:AbstractBasis}, ::Provided) = length(basis(B))
 
 ## Really meant as a method on AbstractState's
+basistype(x) = basistype(typeof(x))
+@disallow basistype(::Type)
 basistype(x::AbstractBasis) = basistype(typeof(x))
 basistype(B::Type{<:AbstractBasis}) = B
 
-## Should be merged with basistype?
+supbasistype(B::Type{<:AbstractBasis}) = B
+supbasistype(B::Type{<:Wrapped}) = supbasistype(innertype(B))
+supbasistype(T) = supbasistype(basistype(T))
+
 innertype(x::AbstractBasis) = innertype(typeof(x))
 innertype(B::Type{<:AbstractBasis}) = B
+innertype(::Type{<:Wrapped{B}}) where B<:AbstractBasis = B
 
-inner(x::AbstractState) = x
+inner(x::AbstractBasis) = x

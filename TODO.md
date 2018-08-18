@@ -18,3 +18,4 @@ x [TENTATIVE] Algebra
   ```
 that works with Product{1}?
 x Add promote_rule between `Product{}`s of `Rep{}`s
+- [TENTATIVE] Make distinction between `SimpleBasis{}` and `ComplexBasis{}`
