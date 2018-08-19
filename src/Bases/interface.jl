@@ -1,6 +1,6 @@
 ### Interface that an AbstractBasis must implement
 export basis, basistype, supbasistype, dim, index, indexbasis, inner, innertype
-using ..@commutes
+using ..@disallow
 
 abstract type Generation end
 struct Provided <: Generation end
@@ -49,3 +49,12 @@ innertype(B::Type{<:AbstractBasis}) = B
 innertype(::Type{<:Wrapped{B}}) where B<:AbstractBasis = B
 
 inner(x::AbstractBasis) = x
+
+indextype(B::Type{<:AbstractBasis}) = Index{B}
+indextype(I::Type{<:Index}) = I
+
+
+
+
+Base.convert(::Type{B}, b2::Rep{B}) where B<:AbstractBasis = inner(b2)
+Base.convert(B1::Type{<:AbstractBasis}, b2::Wrapped) = Base.convert(B1, inner(b2))

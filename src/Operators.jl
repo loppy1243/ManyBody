@@ -107,29 +107,33 @@ end
 Base.getindex(op::AbstractOperator, args...) = matrixelem(op, args...)
 
 ### Kernels
-matrixelem(op::FunctionOperator{N, P}, argsl::P, argsr::P) where {N, P<:Bases.Product{N}} =
-    convert(eltype(op), rep(op)(argsl, argsr))
-## ???????
-#@generated function matrixelem(op::ArrayOperator{N, P}, argsl::P1, argsr::P2) where
-#                              {N, P<:Bases.Product{N}, P1<:Bases.Product{N}, P2<:Bases.Product{N}}
-#    for (B, B1, B2) in zip(innertypes.(P, P1, P2)...)
-#        op1, op2 = map((B1, B2)) do X
-#            if X === Bases.Index{B}
-#                :index
-#            elseif (Y = promote_type(B, X)) !== Any
-#                
-#    end
-#end
+function matrixelem(op::FunctionOperator{N},
+                    argsl::Bases.Product{N}, argsr::Bases.Product{N}) where N
+    B = basistype(op)
+    convert(eltype(op), rep(op)(convert(B, argsl), convert(B, argsr)))
+end
+@generated function matrixelem(op::ArrayOperator{N},
+                               argsl::Bases.Product{N}, argsr::Bases.Product{N}) where N
+    exprsl = map(innertypes(basistype(op))) do B
+        
+    end
+end
+@generated function matrixelem(op::ArrayOperator{N},
+                               argsl::Bases.Product{N}, argsr::Bases.Product{N}) where N
+    i = 1
+    exprsl, exprsr = map(innertypes.((basistype(op), argsl, argsr))...) do B, Bl, Br
+        _get_expr(arg) = if Bl === Bases.Index{B}
+            :(index($arg[$i]))
+        else
+            :(index(convert($B, $arg[$i])))
+        end
+        i += 1
 
-@generated matrixelem(op::FunctionOperator{N, B, T}, args::Vararg{B, N2}) where
-                     {N, N2, B<:AbstractBasis, T} =
-    :(@ncall($N2, rep(op), i -> args[i]))
-@generated matrixelem(op::ArrayOperator{N, B}, args::Vararg{B, N2}) where
-                     {N, N2, B<:AbstractBasis} =
-    :(@nref($N2, rep(op), i -> index(args[i])))
-@generated matrixelem(op::AbstractOperator{N, B, T}, args::Vararg{B, N2}) where
-                     {N, N2, T, B<:AbstractBasis} =
-    :(convert(T, prod(args[1:$N])'*@ncall($N, op, i -> args[$N+i])))
+        _get_expr.((:argsl, :argsr))
+    end |> x -> zip(x...)
+
+    :(rep(op)[$(exprsl...), $(exprsr...)])
+end
 
 nbodies(::Type{<:AbstractOperator{N}}) where N = N
 nbodies(op::AbstractOperator) = nbodies(typeof(op))

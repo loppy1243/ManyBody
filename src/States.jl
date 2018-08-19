@@ -81,12 +81,21 @@ Base.promote_rule(S::Type{<:ArrayState{N, P}}, ::Type{<:Scaled{P}}) where
 
 Base.convert(S::Type{<:Scaled}, b) = S(b)
 Base.convert(S::Type{<:ArrayState}, b) = S(b)
-Base.convert(S1::Type{Scaled{<:Bases.Rep{B}}}, s2::Scaled{<:Bases.Rep{B}}) where
-            B<:AbstractBasis =
-    S1(convert(eltype(S1), s2.coeff), s2.state)
-Base.convert(S1::Type{<:ArrayState{N, P}}, s2::ArrayState{N, P}) where {N, P<:Bases.Product{N}} =
-    S1(convert(reptype(S1), rep(s2)))
-#Base.convert(S1::Type{<:Scaled}, s2::ArrayState) = ...
+Base.convert(S1::Type{<:Scaled}, s2::Scaled) =
+    S1(convert(eltype(S1), s2.coeff), convert(basistype(S1), s2.state))
+function Base.convert(S1::Type{<:ArrayState}, s2::ArrayState)
+    ret = similar(reptype(S1))
+    for I in CartesianIndices(rep(s2))
+        ixs = map(innertypes(basistype(S1)), innertypes(basistype(s2)), Tuple(I)) do B1, B2, i
+            convert(indextype(B1), Index{B2}(i))
+        end
+    end
+
+    ret = similar(reptype(S1))
+    for I in Bases.CartesianIndices(basistype(s2))
+        ret[index(convert(IndexType(basistype(I)), I))] = rep(s2)[index(I)]
+    end
+end
 
 const Rep{B<:AbstractBasis, S<:Mixed{B}} = Union{Bases.Rep{B}, S}
 
