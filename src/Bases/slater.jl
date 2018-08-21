@@ -1,11 +1,14 @@
 export create, create!, annihil, annihil!
 
-struct Slater{B<:AbstractBasis} <: AbstractBasis
-    bits::BitVector
+struct Slater{B<:ConcreteBasis} <: ConcreteBasis
+    bits::BitArray
 
-    Slater{B}(parts::BitVector) where B = new(parts)
-    function Slater{B}(parts) where B
-        bits = falses(dim(B))
+    function Slater{B}(parts::BitArray) where B<:ConcreteBasis
+        @assert size(parts) == innerdims(B)
+        new(parts)
+    end
+    function Slater{B}(parts) where B<:ConcreteBasis
+        bits = falses(innerdims(B))
 
         for p in parts
             p = convert(B, p)
@@ -16,30 +19,40 @@ struct Slater{B<:AbstractBasis} <: AbstractBasis
         new(bits)
     end
 end
-Slater(x::Tuple) = MethodError(Slater, (x,)) |> throw
-Slater(ps...) = Slater(ps)
-Slater(ps::NTuple{N, B}) where {N, B<:AbstractBasis} = Slater{B}(ps)
+Slater{B}(ps...) where B<:ConcreteBasis = Slater{B}(ps)
+Slater(ps::NTuple{<:Any, B}) where B<:ConcreteBasis = Slater{B}(ps)
+Slater(ps::B...) where B<:ConcreteBasis = Slater{B}(ps)
 
-Base.:(==)(s1::MB, s2::MB) where MB<:Slater = s1.bits == s2.bits
-Base.in(p::Rep{B}, s::Rep{Slater{B}}) where B = inner(s).bits[index(p)]
-Base.in(p::Sub{B}, s::Rep{Slater{B}}) where B = inner(p) in s
+IndexType(::Type{<:Slater}) = IndexTypes.Linear()
 
-index(s::Slater) = sum(s.bits[i]*2^(i-1) for i in eachindex(s.bits))
-function indexbasis(::Type{Slater{B}}, ix::Int) where B 
-    d = dim(B)
-    states = falses(d)
-    for i in 1:d
-        states[i] = (ix & (1 << (i-1))) != 0
+Base.:(==)(s1::B, s2::B) where B<:Slater = s1.bits == s2.bits
+
+Base.in(p::MaybeIndex{B}, s::Slater{B}) where B<:ConcreteBasis = s.bits[index(p)]
+Base.in(p::Rep, s::Rep) = inner(p) in inner(s)
+
+innertype(::Type{Slater{B}}) where B<:ConcreteBasis = B
+function inner(s::Slater)
+    SB = innertype(s)
+    SBI = indextype(B)
+    Product(SB[I] for I in eachindex(SB) if SBI[I] in s)
+end
+
+index(s::Slater) = sum(s.bits[i]*2^(i-1) for i in LinearIndices(s.bits))
+function indexbasis(B::Type{<:Slater}, ix::Int)
+    SB = innertype(B)
+    bits = falses(innerdims(SB))
+    for i in LinearIndices(bits)
+        bits[i] = (ix & (1 << (i-1))) != 0
     end
 
-    Slater{B}(states)
+    Slater{B}(bits)
 end
 
 dim(::Type{Slater{B}}) where B = 2^dim(B) - 1
 n_occ(s::Slater) = count(s.bits)
 n_unoc(s::Slater) = count(.~s.bits)
 
-create!(s::Slater{B}, p::Sub{B}) where B = create!(s, inner(p))
+create!(s::Slater{B}, p::Wrapped) where B = create!(s, inner(p))
 function create!(s::Slater{B}, p::MaybeIndex{B}) where B
     i = index(p)
     s.bits[i] = true
@@ -48,7 +61,7 @@ function create!(s::Slater{B}, p::MaybeIndex{B}) where B
 end
 create(s, p) = (s2 = deepcopy(s); (create!(s2, p), s2))
 
-annihil!(s::Slater{B}, p::Sub{B}) where B = annihil!(s, inner(p))
+annihil!(s::Slater{B}, p::Wrapped) where B = annihil!(s, inner(p))
 function annihil!(s::Slater{B}, p::MaybeIndex{B}) where B
     i = index(p)
     s.bits[i] = false
@@ -57,8 +70,10 @@ function annihil!(s::Slater{B}, p::MaybeIndex{B}) where B
 end
 annihil(s, p) = (s2 = deepcopy(s); (annihil!(s2, p), s2))
 
-function Base.show(io::IO, x::MaybeSub{Slater{B}}) where B
-    print(io, "Slater($(dim(B)))[",
-              [string(B[i])*" " for (i, p) in enumerate(inner(x).bits) if p]...,
-              "]")
+function Base.show(io::IO, x::Slater)
+    SB = innertype(x)
+    SBI = indextype(SB)
+    str = prod((SBI[I] in x ? string(SB[I]) : "_") * (I == lastindex(SB) ? "" : ", ")
+               for I in eachindex(SB))
+    print(io, "Slater($(dim(SB)))[$str]")
 end

@@ -1,35 +1,41 @@
-export normalize, rank
-
 # Slater{B} == Product{N, NTuple{N, B}} where N for 0 <= N <= dim(B)
 
-#abstract type AbstractProduct <: AbstractBasis
+#abstract type AbstractProduct <: ConcreteBasis
 #
-#struct BitProduct{N, BS<:NTuple{N, AbstractBasis}} <: AbstractProduct
+#struct BitProduct{N, BS<:NTuple{N, ConcreteBasis}} <: AbstractProduct
 #    bits::BitArray{N}
 #end
 
-struct Neg{B<:AbstractBasis} <: AbstractBasis
+struct Neg{B<:ConcreteBasis} <: LeafBasis
     state::B
 end
-const MaybeNeg{B<:AbstractBasis} = Union{B, Neg{B}}
-#Neg(state::AbstractBasis) = Neg{typeof(state)}(state)
-Base.:+(s::AbstractState) = s
-Base.:-(b::AbstractBasis) = Neg(b)
+const MaybeNeg{B<:ConcreteBasis} = Union{B, Neg{B}}
+Base.:-(b::ConcreteBasis) = Neg(b)
+Base.:-(b::Neg) = inner(b)
+
+IndexType(B::Type{<:Neg}) = IndexType(innertype(B))
 
 innertype(::Type{Neg{B}}) where B<:AbstractBasis = B
 inner(b::Neg) = b.state
 
 index(b::Neg) = index(inner(b))
-indexbasis(B::Type{<:Neg}, i::Int) = Neg(innertype(B)[i])
+indexbasis(B::Type{<:Neg}, ixs...) = Neg(innertype(B)[ixs...])
 dim(B::Type{<:Neg}) = dim(innertype(B))
+innerdims(B::Type{<:Neg}) = innerdims(inertype(B))
 
-struct Product{N, BS<:NTuple{N, AbstractBasis}} <: AbstractBasis
+Base.convert(::Type{B}, b::Neg{B}) where B<:ConcreteBasis = inner(b)
+Base.convert(B::Type{<:Neg}, b::ConcreteBasis) = B(b)
+
+struct Product{N, BS<:NTuple{N, ConcreteBasis}} <: ConcreteBasis
     states::BS
-end
-Product(args::Vararg{AbstractBasis, N}) where N =
-    Product{N, typeof(args)}(args)
 
-rank(::Type{<:AbstractBasis}) = 1
+    function Product{N, BS}(states::BS) where {N, BS<:NTuple{N, ConcreteBasis}}
+        new(states)
+    end
+end
+Product(args::ConcreteBasis...) = Product{length(args), typeof(args)}(args)
+
+IndexType(::Type{<:Product{N}}) where N = IndexTypes.Cartesian{N}()
 rank(::Type{<:Product{N}}) where N = N
 
 innertype(::Type{Product{1, Tuple{B}}}) where B<:AbstractBasis = B
@@ -38,26 +44,13 @@ inner(b::Product{1}) = b.states[1]
 innertypes(::Type{Product{N, BS}}) where {N, BS<:NTuple{N, AbstractBasis}} =
     Tuple(BS.parameters)
 
-## TODO: TESTME
-@generated function normalize(b::Product)
-    c = 0
-    xs = map(innertypes(b)) do B
-        if B <: Neg
-            c += 1
-            (:(inner(b.states[$i])), innertype(B))
-        else
-            (:(b.states[$i]), B)
-        end
-    end
-    exprs, tys = zip(xs...)
-    prod_expr = :(Product{$(rank(b)), Tuple{$(tys...)}}(($(exprs...),)))
+index(b::Product) = Base.CartesianIndex(map(index, b.states))
+indexbasis(P::Type{<:Product{N}}, ixs::CartesianIndex{N}) where N = indexbasis(P, Tuple(ixs))
+indexbasis(P::Type{<:Product{N}}, ixs::NTuple{N, Int}) where N = Product(map(index, ixs))
+indexbasis(P::Type{<:Product{N}}, ixs::Vararg{Int, N}) where N = indexbasis(P, ixs)
 
-    if iseven(c)
-        prod_expr
-    else
-        :(Neg($prod_expr))
-    end
-end
+innerdims(B::Type{<:Product}) = map(dim, innertypes(B))
+dim(B::Type{<:Product}) = prod(innerdims(B))
 
 ## Note that we consider the products X*Y and Y*X as distinct (yet of course isomorphic).
 Base.:(==)(a::B, b::B) where B<:Product = a.states == b.states
@@ -69,34 +62,10 @@ end
 Base.convert(P1::Type{<:Product{N}}, p2::Product{N}) where N =
     P1(map(convert, innertypes(P1), p2.states))
 
-Base.promote_rule(::Type{Product{1, Tuple{B}}}, ::Type{B}) where B<:AbstractBasis =
+Base.promote_rule(::Type{Product{1, Tuple{B}}}, ::Type{B}) where B<:ConcreteBasis =
     Product{1, Tuple{B}}
-Base.convert(::Type{Product{1, Tuple{B}}}, b::B) where B<:AbstractBasis = Product(b)
-Base.convert(::Type{B}, b::Product{1, Tuple{B}}) where B<:AbstractBasis = b.states[1]
-
-innerindices(b::Product) = map(index, b.states)
-
-index(b::Product) = index(b.states[1]) + sum(enumerate(b.states[2:end])) do I
-    i, c = I
-    (index(c)-1)*prod(dim.(typeof.(b.states[1:i])))
-end
-
-## Could @generate to eliminate func calls, unroll loop
-function indexbasis(P::Type{<:Product}, i::Int)
-    ixs = Vector{AbstractBasis}(undef, rank(P))
-
-    i -= 1
-    for (k, B) in enumerate(innertypes(P))
-        j = i % dim(B) + 1
-        ixs[k] = B[j]
-        i = div(i - j + 1, dim(B))
-    end
-
-    P(Tuple(ixs))
-end
-
-innerdims(B::Type{<:Product}) = map(dim, innertypes(B))
-dim(B::Type{<:Product}) = prod(dims(B))
+Base.convert(::Type{Product{1, Tuple{B}}}, b::B) where B<:ConcreteBasis = Product(b)
+Base.convert(::Type{B}, b::Product{1, Tuple{B}}) where B<:ConcreteBasis = inner(b)
 
 ## Would an explicit tensor() function be better?
 
@@ -123,6 +92,8 @@ dim(B::Type{<:Product}) = prod(dims(B))
             [:(inner(bs[$i]).states[$j]) for j = 1:rank(innertype(b))]
         elseif b <: Neg
             c += 1
+            [:(inner(bs[$i]))]
+        elseif b <: LeafBasis
             [:(inner(bs[$i]))]
         else
             [:(bs[$i])]

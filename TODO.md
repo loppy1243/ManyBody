@@ -1,6 +1,12 @@
 # General
 - Move `basistype()`, `rep()`, `reptype` under `ManyBody` root
+  - [NOTE] Moved `basistype()`
 - Refactor code to group together types and individual methods separately.
+- Move `RefStates` out of `Bases`
+- Update tests to match new scheme
+- [IDEA] Move `dim()`, `rank()` up to `ManyBody`?
+- [IDEA] Define within a given module only that which belongs to the module, and define
+  interactions or outside methods within the greater module.
 
 # Operators
 - Factor into multiple files
@@ -8,9 +14,12 @@
 
 # States
 x Interface with Bases
-x [TENTATIVE] Algebra
-- Add conversion between `ArrayState{}`s of differing `Product{}`s
-- [TENTATIVE] Rename `ArrayState{}` to `Tensor{}`
+x [IDEA] Algebra
+x [IGNORE] Add conversion between `ArrayState{}`s of differing `Product{}`s
+  - [NOTE] Do *NOT* do this, instead only worry about exact types. Conversions can happen
+    upon action.
+- [IDEA] Rename `ArrayState{}` to `Tensor{}`
+- Add methods for `similar()` for `ArrayState{}`
 
 # Bases
 - Is there a way to let
@@ -19,12 +28,14 @@ x [TENTATIVE] Algebra
   ```
 that works with Product{1}?
 x Add promote_rule between `Product{}`s of `Rep{}`s
-- [TENTATIVE] Make distinction between `SimpleBasis{}` and `ComplexBasis{}`
-- At least conceptually, this is what we want:
+x Make distinction between `SimpleBasis{}` and `ComplexBasis{}`
+  - [NOTE] See below item for actual scheme implemented
+x At least conceptually, this is what we want:
   ```
   abstract type AbstractBasis end
   abstract type ConcreteBasis <: AbstractBasis end
-  abstract type AbstractIndex{B<:ConcreteBasis} <: AbstractBasis end
+  abstract type LeafBasis <: AbstractBasis end
+  abstract type AbstractIndex{B<:ConcreteBasis} <: LeafBasis end
 
   struct Pairing{L} <: ConcreteBasis end
   struct Slater{B<:ConcreteBasis} <: ConcreteBasis end
@@ -45,4 +56,6 @@ x Add promote_rule between `Product{}`s of `Rep{}`s
   struct ArrayState{B<:Bases.AbstractIndex, A<:AbstractArray} <: Mixed{B} end
   const VectorState
   ```
-- Create two index types: `LinearIndex` and `CartesianIndex`, similar to what is in `Base`.
+x Create two index types: `LinearIndex` and `CartesianIndex`, similar to what is in `Base`.
+- Add way to select `IndexType(::Type{<:Sub})` in `@defSub`
+  - Define `innerdims()`

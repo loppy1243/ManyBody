@@ -2,7 +2,7 @@ export Pairing, level, nlevels, spin, flipspin
 import .RefStates
 using ..SpinMod
 
-struct Pairing{Levels} <: AbstractBasis
+struct Pairing{Levels} <: ConcreteBasis
     level::Int
     spin::Spin
 
@@ -11,42 +11,39 @@ struct Pairing{Levels} <: AbstractBasis
         new(l, s)
     end
 end
+IndexType(::Type{<:Pairing}) = IndexTypes.Linear()
 
 flipspin(p::Pairing) = typeof(p)(level(p), flip(spin(p)))
-flipspin(p::Sub{<:Pairing}) = typeof(p)(flipspin(p))
-flipspin(p::Index{<:Pairing}) = typeof(p)(flipspin(p))
+flipspin(p::Wrapped) = convert(typeof(p), flipspin(inner(p)))
 
 Base.:(==)(p1::Pairing{L}, p2::Pairing{L}) where L =
     p1.level == p2.level && p1.spin == p2.spin
 
 index(sp::Pairing) = 2(sp.level-1) + 1 + Bool(sp.spin)
 
-index_to_spin(i) = Spin(Bool(1 - i % 2))
-index_to_level(i) = div(i - Bool(index_to_spin(i)) - 1, 2) + 1
+function indexbasis(B::Type{<:Pairing}, pn::Int) where L
+    s_num = Bool(1 - i % 2)
+    l = div(i - s_num - 1, 2) + 1
+    B(l, Spin(s_num))
+end
 
-indexbasis(::Type{Pairing{L}}, pn::Int) where L =
-    Pairing{L}(index_to_level(pn), index_to_spin(pn))
-
+nlevels(a::AbstractBasis) = nlevels(typeof(a))
 nlevels(::Type{Pairing{L}}) where L = L
-nlevels(::Type{<:Sub{Pairing{L}}}) where L = L
-nlevels(::Type{Index{Pairing{L}}}) where L = L
+nlevels(B::Type{<:Wrapped}) = nlevels(innertype(B))
 
 level(sp::Pairing) = sp.level
-level(sp::Sub{<:Pairing}) = sp.state.level
-level(sp::Index{<:Pairing}) = index_to_level(sp.index)
+level(sp::Wrapped) = level(inner(sp))
 
 spin(sp::Pairing) = sp.spin
-spin(sp::Sub{<:Pairing}) = sp.state.spin
-spin(sp::Index{<:Pairing}) = index_to_level(sp.index)
+spin(sp::Wrapped) = spin(inner(sp))
 
-SpinMod.spinup(sp::Pairing) = spinup(sp.spin)
-SpinMod.spinup(sp::Sub{<:Pairing}) = spinup(sp.state.spin)
-SpinMod.spinup(sp::Index{<:Pairing}) = Bool(index_to_spin(sp.index))
+SpinMod.spinup(sp) = spinup(spin(sp))
 
-dim(::Type{Pairing{L}}) where L = 2L
+dim(B::Type{<:Pairing}) = 2nlevel(B)
 
 Base.show(io::IO, x::Pairing) = print(io, level(x), spinup(spin(x)) ? "↑" : "↓")
-function Base.show(io::IO, ::MIME"text/plain", x::Pairing{L}) where L
+function Base.show(io::IO, ::MIME"text/plain", x::Pairing)
+    L = nlevels(x)
     for i = L:-1:1
         print(io, lpad(i, ndigits(L)), "|  ")
         if i == level(x)

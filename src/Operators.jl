@@ -9,65 +9,52 @@ using Combinatorics: levicivita
 using JuliaUtil: cartesian_pow
 using ..Bases
 
-abstract type AbstractOperator{N, B<:Bases.Product{N}, T} end
-struct ActionOperator{N, B<:Bases.Product{N}, T, F<:Function} <: AbstractOperator{N, B, T}
+abstract type AbstractOperator{B<:ConcreteBasis, T} end
+struct ActionOperator{B<:ConcreteBasis, T, F<:Function} <: AbstractOperator{B, T}
     rep::F
 end
-const CF64ActionOperator{N, B<:Bases.Product{N}} = ActionOperator{N, B, ComplexF64}
-const F64ActionOperator{N, B<:Bases.Product{N}} = ActionOperator{N, B, Float64}
+const CF64ActionOperator{B<:ConcreteBasis} = ActionOperator{B, ComplexF64}
+const F64ActionOperator{B<:ConcreteBasis} = ActionOperator{B, Float64}
 
 ## ?DELETEME
-#ActionOperator{N, B, T}(f::Function) where {N, B<:Bases.Product{N}, T} =
-#    ActionOperator{N, B, T, typeof(f)}(f)
+#ActionOperator{B, T}(f::Function) where {B<:ConcreteBasis, T} =
+#    ActionOperator{B, T, typeof(f)}(f)
 
-struct FunctionOperator{N, B<:Bases.Product{N}, T, F<:Function} <: AbstractOperator{N, B, T}
+struct FunctionOperator{B<:ConcreteBasis, T, F<:Function} <: AbstractOperator{B, T}
     rep::F
 end
-const CF64FunctionOperator{N, B<:Bases.Product{N}} = FunctionOperator{N, B, ComplexF64}
-const F64FunctionOperator{N, B<:Bases.Product{N}} = FunctionOperator{N, B, Float64}
+const CF64FunctionOperator{B<:ConreteBasis} = FunctionOperator{B, ComplexF64}
+const F64FunctionOperator{B<:ConreteBasis} = FunctionOperator{B, Float64}
 
 ## ?DELETEME
-#FunctionOperator{N, B, T}(f::Function) where {N, B<:Bases.Product{N}, T} =
-#    FunctionOperator{N, B, T, typeof(f)}(f)
+#FunctionOperator{B, T}(f::Function) where {B<:ConcreteBasis, T} =
+#    FunctionOperator{B, T, typeof(f)}(f)
 #
-struct ArrayOperator{N, B<:Bases.Product{N}, T, A<:AbstractArray{T}} <: AbstractOperator{N, B, T}
+struct ArrayOperator{B<:ConcreteBasis, T, A<:AbstractArray{T}} <: AbstractOperator{B, T}
     rep::A
 
-    function ArrayOperator{N, B, T, A}(rep::A) where
-                                      {N, B<:Bases.Product{N}, T, A<:AbstractArray{T, N}}
-        @assert size(rep) == innerdims(B)
+    function ArrayOperator{B, T, A}(rep::A) where {B<:ConcreteBasis, T, A<:AbstractArray{T}}
+        @assert size(rep) == (innerdims(B)..., innerdims(B))
         new(rep)
     end
 end
-const CF64ArrayOperator{N, B<:Bases.Product{N}} =
-    ArrayOperator{N, B, ComplexF64, <:Array{ComplexF64}}
-const F64ArrayOperator{N, B<:Bases.Product{N}} =
-    ArrayOperator{N, B, Float64, <:Array{Float64}}
+const CF64ArrayOperator{B<:ConcreteBasis} = ArrayOperator{B, ComplexF64, <:Array{ComplexF64}}
+const F64ArrayOperator{B<:ConcreteBasis} = ArrayOperator{N, B, Float64, <:Array{Float64}}
 
 ## ?DELETEME
-#function ArrayOperator{N, B, T, A}(a::AbstractArray) where
-#                                  {N, B<:Bases.Product{N}, T, A<:AbstractArray{T}}
-#    a = convert(A, a)
-#    ArrayOperator{N, B, T, A}(a)
-#end
-#function ArrayOperator{N, B, T}(a::AbstractArray) where {N, B<:Bases.Product{N}, T}
-#    a = convert(AbstractArray{T}, a)
-#    ArrayOperator{N, B, T, typeof(a)}(a)
-#end
-#ArrayOperator{N, B}(a::AbstractArray) where {N, B<:Bases.Product{N}} =
-#    ArrayOperator{N, B, eltype(a), typeof(a)}(a)
-ArrayOperator(B::Type{<:Bases.Product}, a::AbstractArray) =
-    ArrayOperator{ndims(a), B, eltype(a), typeof(a)}(a)
+#ArrayOperator{B}(a::AbstractArray) where B<:ConcreteBasis =
+#    ArrayOperator{B, eltype(a), typeof(a)}(a)
 
-ManyBody.rep(op::Union{ActionOperator, FunctionOperator, ArrayOperator}) = op.rep
-ManyBody.reptype(op::AbstractOperator) = reptype(typeof(op))
-ManyBody.reptype(::Type{<:ArrayOperator{<:Any, <:Any, <:Any, A}}) where A = A
-ManyBody.reptype(::Type{<:ActionOperator{<:Any, <:Any, <:Any, F}}) where F = F
-ManyBody.reptype(::Type{<:FunctionOperator{<:Any, <:Any, <:Any, F}}) where F = F
-Base.eltype(::Type{<:AbstractOperator{<:Any, <:Any, T}}) where T = T
+#=ManyBody.=#rep(op::Union{ActionOperator, FunctionOperator, ArrayOperator}) = op.rep
+#ManyBody.reptype(op::AbstractOperator) = reptype(typeof(op))
+#=ManyBody.=#reptype(::Type{<:ArrayOperator{<:Any, <:Any, A}}) where A = A
+#=ManyBody.=#reptype(::Type{<:ActionOperator{<:Any, <:Any, F}}) where F = F
+#=ManyBody.=#reptype(::Type{<:FunctionOperator{<:Any, <:Any, F}}) where F = F
+Base.eltype(::Type{<:AbstractOperator{<:Any, T}}) where T = T
 
-ManyBody.basistype(::Type{<:AbstractOperator{<:Any, B, <:Any}}) where B = B
-ManyBody.basistype(x::AbstractOperator) = basistype(typeof(x))
+#ManyBody.basistype(x::AbstractOperator) = basistype(typeof(x))
+ManyBody.basistype(::Type{<:AbstractOperator{B}}) where B<:ConcreteBasis = B
+Bases.rank(O::Type{<:AbstractOperator}) = rank(basistype(O))
 
 ### Definition
 ## For now, this does not work
@@ -78,62 +65,76 @@ ManyBody.basistype(x::AbstractOperator) = basistype(typeof(x))
 (op::ArrayOperator)(args...) = applyop(op, args...)
 
 ### Kernels
-applyop(op::ActionOperator{N, B}, arg::B) where {N, B<:Bases.Product{N}} =
-    rep(op)(convert(basistype(op), arg))
-applyop(op::FunctionOperator{N}, arg::B) where {N, B<:Bases.Product{N}} = sum(B) do b
-    rep(op)(b, arg)*b
+## Subsumes FunctionOperator{} method
+applyop(op::AbstractOperator{B}, arg::B) where B<:ConcreteBasis = sum(B) do b
+    op[b, arg]*b
 end
+applyop(op::ActionOperator{B}, arg::B) where B<:ConcreteBasis = rep(op)(arg)
+applyop(op::ArrayOperator{B}, arg::Bases.MaybeIndex{B}) where B<:ConcreteBasis =
+    sum(eachindex(B)) do I
+        op[b, index(arg)]*convert(B, arg)
+    end
 
 ### Dispatch
-applyop(op::AbstractOperator{N}, arg::Bases.Product{N}) =
-    applyop(op, convert(basistype(B), arg))
-applyop(op::AbstractOperator, arg::AbstractBasis) = applyop(op, Bases.Product(arg))
-applyop(op::AbstractOperator{N, B}, arg::Bases.Rep{B}) where {N, B<:Bases.Product{N}} =
-    applyop(op, inner(arg))
-applyop(op::AbstractOperator, arg::Neg) = -applyop(op, inner(arg))
-applyop(op::AbstractOperator{N}, args::Vararg{AbstractBasis, N}) where N =
-    applyop(T, op, Bases.Product(args))
-
+applyop(op::AbstractOperator, arg) = applyop(op, convert(basistype(op), arg))
+applyop(op::AbstractOperator, arg::Bases.Neg) = -applyop(op, inner(arg))
 applyop(op::AbstractOperator, arg::States.Scaled) = arg.coeff*applyop(op, arg.state)
-applyop(op::AbstractOperator, arg::ArrayState) = sum(findall(!iszero, rep(arg))) do I
-    arg[I] * applyop(op, Bases.Product(map(getindex,
-                                           innertypes(basistype(arg)), Tuple(I))))
-end
+function applyop(op::AbstractOperator, arg::ArrayState)
+    OB, AB = basistype.((op, arg))
+    OBI, ABI = indextype.((OB, AB))
+    T = promote_type(eltype(op), eltype(arg))
+    ret = similar(reptype(arg), T, innerdims(OB)) |> zero
 
-## (AbstractBasis --> Product) line
-##############################################################################################
+    # Assumes findall() always returns the correct index type...
+    for I in findall(!iszero, rep(arg))
+        ret[OBI[ABI[I]]] = rep(arg)[I]*applyop(op, AB[I])
+    end
+end
 
 ### Definition
 Base.getindex(op::AbstractOperator, args...) = matrixelem(op, args...)
 
 ### Kernels
-function matrixelem(op::FunctionOperator{N},
-                    argsl::Bases.Product{N}, argsr::Bases.Product{N}) where N
-    B = basistype(op)
-    convert(eltype(op), rep(op)(convert(B, argsl), convert(B, argsr)))
+## Subsumes ActionOperator{} method
+matrixelem(op::AbstractOperator{B}, argl::B, argr::B) where B<:ConcreteBasis =
+    convert(eltype(op), argl'op(argr))
+matrixelem(op::FunctionOperator{B}, argl::B, argr::B) where B<:ConcreteBasis =
+    convert(eltype(op), rep(op)(argl, argr))
+matrixelem(op::ArrayOperator{B}, argl::Bases.MaybeIndex{B}, argr::Bases.MaybeIndex{B}) where
+          B<:ConcreteBasis =
+    rep(op)[index(argl), index(argr)]
+
+### Dispatch
+function matrixelem(op::AbstractOperator, args...)  
+    N = rank(op)
+    matrixelem(op, prod(args[1:N]), prod(args[N+1:end]))
 end
-@generated function matrixelem(op::ArrayOperator{N},
-                               argsl::Bases.Product{N}, argsr::Bases.Product{N}) where N
-    exprsl = map(innertypes(basistype(op))) do B
+function matrixelem(op::AbstractOperator, argl, argr)
+    B = basistype(op)
+    matrixelem(op, convert(B, argl), convert(B, argr))
+end
+matrixelem(op::AbstractOperator, argl::Bases.Neg, argr::Bases.Neg) =
+    matrixeleme(op, inner(argl), inner(argr))
+@commutes (2,3) conj matrixelem(op::AbstractOperator, argl::Bases.Neg, argr) =
+    -matrixelem(op, inner(argl), argr)
+matrixelem(op::AbstractOperator, argl::States.Scaled, argr::States.Scaled) =
+    conj(argl.coeff)*argr.coeff*matrixelem(op, argl.state, argr.state)
+@commutes (2,3) conj matrixelem(op::AbstractOperator, argl, argr::States.Scaled) =
+    argr.coeff*matrixelem(op, argl, argr.state)
+## Add special case for ArrayOperator{}?
+function matrixelem(op::AbstractOperator, argl::ArrayState, argr::ArrayState)
+    Bl, Br = basistype.((argl, argr))
+
+    sum(Iterators.product(eachindex(Bl), eachindex(Br))) do K
+        I, J = K
         
+        l, r = (Bl[I], Br[J])
+        matrixelem(op, l, r)*(argl'l)*(r'argr)
     end
 end
-@generated function matrixelem(op::ArrayOperator{N},
-                               argsl::Bases.Product{N}, argsr::Bases.Product{N}) where N
-    i = 1
-    exprsl, exprsr = map(innertypes.((basistype(op), argsl, argsr))...) do B, Bl, Br
-        _get_expr(arg) = if Bl === Bases.Index{B}
-            :(index($arg[$i]))
-        else
-            :(index(convert($B, $arg[$i])))
-        end
-        i += 1
 
-        _get_expr.((:argsl, :argsr))
-    end |> x -> zip(x...)
-
-    :(rep(op)[$(exprsl...), $(exprsr...)])
-end
+### Update Line
+##############################################################################################
 
 nbodies(::Type{<:AbstractOperator{N}}) where N = N
 nbodies(op::AbstractOperator) = nbodies(typeof(op))

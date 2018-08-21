@@ -1,5 +1,5 @@
 @reexport module Bases
-export RefStates, AbstractState, AbstractBasis, RefState, Bra, ZeroState
+export RefStates, AbstractState, AbstractBasis, RefState
 
 using ..AbstractState
 using Base.Cartesian: @ncall
@@ -8,20 +8,19 @@ using Combinatorics: combinations
 using Reexport: @reexport
 
 abstract type AbstractBasis <: AbstractState end
+abstract type ConcreteBasis <: AbstractBasis end
+abstract type LeafBasis <: AbstractBasis end
+abstract type AbstractIndex{B<:ConcreteBasis} <: LeafBasis end
+const MaybeIndex{B<:ConcreteBasis} = Union{B, AbstractIndex{B}}
 
 include("interface.jl")
 include("iter.jl")
 include("indexbasis.jl")
 include("subbasis.jl")
-
-## FIXME: Move Neg so that this works
-const Wrapped{B<:AbstractBasis} = Union{Sub{B}, Index{B}, Neg{B}, Product{1, Tuple{B}}}
-const Rep{B<:AbstractBasis} = Union{B, Wrapped{B}}
-
+include("product.jl")
 include("pairing.jl")
 include("refstates.jl")
 include("slater.jl")
-include("product.jl")
 include("baseops/main.jl")
 
 @defSub Paired{F, L} <: Slater{Pairing{L}} begin
