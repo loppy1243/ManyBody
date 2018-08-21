@@ -33,25 +33,54 @@ macro disallow(expr::Expr)
     :($(esc(expr)) = throw(MethodDisallowedError($func_sym_esc, ($(arg_sym_escs...),))))
 end
 
+### Better name: @symmetric
 macro commutes(expr::Expr)
-    _commutes(:identity, expr)
+    _commutes(:(:), :identity, expr)
 end
-macro commute(f, expr::Expr)
-    _commutes(f, expr)
+macro commutes(ns, expr::Expr)
+    _commutes(ns, :identity, expr)
 end
-function _commutes(f, expr::Expr)
-    # Just assume we have a function expr
+macro commutes(ns, f, expr::Expr)
+    _commutes(ns, f, expr)
+end
+## Add more input validation
+function _commutes(ns, f, expr::Expr)
+    # Just assume we have a function exp
+
+    _get_nargs(expr) = if expr.args[1].head === :where
+        length(expr.args[1].args[1].args) - 1
+    else
+        length(expr.args[1].args) - 1
+    end
+
+    ixs = if ns === :(:)
+        2:_get_nargs(expr)+1
+    elseif ns isa Expr && ns.head === :tuple
+        if all(x -> x isa Int, ns.args)
+            map(x -> x+1, ns.args)
+        else
+            error("Expected literal NTuple{<:Any, Int}, found $ns")
+        end
+    elseif ns isa Expr && ns.head === :call && ns.args[1] === :(:)
+        if length(ns.args[2:end]) == 2 && all(x -> x isa Int, ns.args[2:end])
+            (ns.args[2]+1):(ns.args[3]+1)
+        else
+            error("Expected UnitRange{Int}, found $ns")
+        end
+    else
+        error("Expected literal range or tuple, found $ns")
+    end
 
     commed_expr = deepcopy(expr)
 
     if commed_expr.args[1].head === :where
-        reverse!(@view commed_expr.args[1].args[1].args[2:end])
+        reverse!(@view commed_expr.args[1].args[1].args[ixs])
     else
-        reverse!(@view commed_expr.args[1].args[2:end])
+        reverse!(@view commed_expr.args[1].args[ixs])
     end
 
     if f !== :identity
-        commed_expr.args[2] = :($f(commed_expr.args[2]))
+        commed_expr.args[2] = :($f($(commed_expr.args[2])))
     end
 
     quote

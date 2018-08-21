@@ -55,6 +55,7 @@ n_unoc(s::Slater) = count(.~s.bits)
 create!(s::Slater{B}, p::Wrapped) where B = create!(s, inner(p))
 function create!(s::Slater{B}, p::MaybeIndex{B}) where B
     i = index(p)
+    s.bits[i] && return 0
     s.bits[i] = true
 
     1 - 2(count(s.bits[1:i-1]) % 2)
@@ -64,6 +65,7 @@ create(s, p) = (s2 = deepcopy(s); (create!(s2, p), s2))
 annihil!(s::Slater{B}, p::Wrapped) where B = annihil!(s, inner(p))
 function annihil!(s::Slater{B}, p::MaybeIndex{B}) where B
     i = index(p)
+    ~s.bits[i] && return 0
     s.bits[i] = false
 
     1 - 2(count(s.bits[1:i-1]) % 2)

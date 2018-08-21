@@ -1,7 +1,7 @@
 @reexport module Operators
 export AbstractOperator, ActionOperator, CF64ActionOperator, F64ActionOperator,
        FunctionOperator, CF64FunctionOperator, F64FunctionOperator, ArrayOperator,
-       CF64ArrayOperator, F64ArrayOperator, tabulate, refop, RaiseOp, LowerOp, RaiseLowerOps,
+       CF64ArrayOperator, F64ArrayOperator, tabulate, refop, RaiseOp, LowerOp, RaiseLowerOp,
        refop, normord
 
 using Base.Cartesian
@@ -109,131 +109,151 @@ function matrixelem(op::AbstractOperator, args...)
     N = rank(op)
     matrixelem(op, prod(args[1:N]), prod(args[N+1:end]))
 end
-function matrixelem(op::AbstractOperator, argl, argr)
+function matrixelem(op::AbstractOperator, argl::AbstractBasis, argr::AbstractBasis)
     B = basistype(op)
     matrixelem(op, convert(B, argl), convert(B, argr))
 end
-matrixelem(op::AbstractOperator, argl::Bases.Neg, argr::Bases.Neg) =
-    matrixeleme(op, inner(argl), inner(argr))
-@commutes (2,3) conj matrixelem(op::AbstractOperator, argl::Bases.Neg, argr) =
-    -matrixelem(op, inner(argl), argr)
-matrixelem(op::AbstractOperator, argl::States.Scaled, argr::States.Scaled) =
-    conj(argl.coeff)*argr.coeff*matrixelem(op, argl.state, argr.state)
-@commutes (2,3) conj matrixelem(op::AbstractOperator, argl, argr::States.Scaled) =
-    argr.coeff*matrixelem(op, argl, argr.state)
-## Add special case for ArrayOperator{}?
-function matrixelem(op::AbstractOperator, argl::ArrayState, argr::ArrayState)
-    Bl, Br = basistype.((argl, argr))
 
-    sum(Iterators.product(eachindex(Bl), eachindex(Br))) do K
-        I, J = K
-        
-        l, r = (Bl[I], Br[J])
-        matrixelem(op, l, r)*(argl'l)*(r'argr)
+### I don't think we want these, as index notation should be reserved for the actual matrix
+### elementents, and off-basis matrix elements should go through the action notation.
+
+#matrixelem(op::AbstractOperator, argl, argr) = matrixelem(op, promote(argl, argr)...)
+
+#matrixelem(op::AbstractOperator, argl::Bases.Neg, argr::Bases.Neg) =
+#    matrixelem(op, inner(argl), inner(argr))
+#@commutes (2,3) conj matrixelem(op::AbstractOperator, argl::Bases.Neg, argr) =
+#    -matrixelem(op, inner(argl), argr)
+#
+#matrixelem(op::AbstractOperator, argl::States.Scaled, argr::States.Scaled) =
+#    conj(argl.coeff)*argr.coeff*matrixelem(op, argl.state, argr.state)
+#@commutes (2,3) conj matrixelem(op::AbstractOperator, argl, argr::States.Scaled) =
+#    argr.coeff*matrixelem(op, argl, argr.state)
+#
+#function matrixelem(op::AbstractOperator, argl::ArrayState, argr::ArrayState)
+#    BlI, BrI = indextype.(basistype.((argl, argr)))
+#
+#    sum(Iterators.product(eachindex(Bl), eachindex(Br))) do K
+#        I, J = K
+#        
+#        L, R = (BlI[I], BrI[J])
+#        matrixelem(op, L, R)*(argl'L)*(R'argr)
+#    end
+#end
+
+tabulate(op) = tabulate(Array{ComplexF64}, op)
+tabulate(A::Type{<:AbstractArray}, op::ArrayOperator) =
+    ArrayOperator{basistype(op)}(convert(A, rep(op)))
+function tabulate(A::Type{<:AbstractArray}, op::AbstractOperator)
+    B = basistype(op)
+    BI = indextype(B)
+    ds = innerdims(B)
+    ret = similar(A, ds..., ds...)
+
+    for I, J in cartesian_pow(eachindex(B), Val{2})
+        ret[I, J] = op[BI[I], BI[J]]
     end
 end
 
-### Update Line
-##############################################################################################
 
-nbodies(::Type{<:AbstractOperator{N}}) where N = N
-nbodies(op::AbstractOperator) = nbodies(typeof(op))
+### Could make RaiseLowerOp{} type stable by combining RaiseOp{} and LowerOp{} into one type
+### with a parameter to select whether it is a raise or lower op.
 
-tabulate(op) = tabulate(Array{ComplexF64}, op)
-tabulate(::Type{A}, x::Number) where A<:AbstractArray = convert(eltype(A), x)
-tabulate(::Type{A}, x::AbstractArray) where A<:AbstractArray = convert(A, x)
-tabulate(::Type{A}, op::ArrayOperator{N, B}) where {A<:AbstractArray, N, B<:Bases.Index} =
-    ArrayOperator{N, B}(convert(A, rep(op)))
-tabulate(::Type{A}, op::ArrayOperator{N, B}) where {A<:AbstractArray, N, B<:AbstractBasis} =
-    ArrayOperator{N, Bases.Index{B}}(convert(A, rep(op)))
-#@generated function tabulate(::Type{A}, op::AbstractOperator{N, B}) where
-#                            {A<:AbstractArray, N, B<:AbstractBasis}
-#    quote
-#        arr = similar(A, $(fill(dim(B), 2N)...))
-#        @nloops $(2N) s (_ -> B) begin
-#            @nref($(2N), arr, i -> index(s_i)) = @nref($(2N), op, s)
-#        end
-#
-#        ArrayOperator{N, Bases.Index{B}}(arr)
-#    end
-#end
-function tabulate(::Type{A}, op::AbstractOperator) where {A<:AbstractArray}
-    arr = similar(A, fill(dim(basistype(op)), 2nbodies(op))...)
-    for S in cartesian_pow(basistype(op), Val{2nbodies(op)})
-        arr[CartesianIndex(map(index, S))] = op[S...]
+struct RaiseOp{SP<:ConcreteBasis} <: AbstractOperator{Bases.Slater{SP}, Int}
+    state::SP
+end
+struct LowerOp{SP<:ConcreteBasis} <: AbstractOperator{Bases.Slater{SP}, Int}
+    state::SP
+end
+const RLOp{SP<:ConcreteBasis} = Union{RaiseOp{SP}, LowerOp{SP}}
+
+struct RaiseLowerOp{SP<:ConcreteBasis} <: AbstractOperator{Bases.Slater{SP}, Int}
+    rlops::Vector{RLOp{SP}}
+end
+RaiseLowerOp{SP}(itr) where SP<:ConcreteBasis = RaiseLowerOp{SP}(collect(itr))
+RaiseLowerOp(rlops::RLOp{SP}...) where SP<:ConcreteBasis = RaiseLowerOp{SP}(collect(rlops))
+
+const AnyRLOp{SP<:ConcreteBasis} = Union{RaiseLowerOp{SP}, RaiseOp{SP}, LowerOp{SP}}
+
+ManyBody.reptype(O::Type{<:RLOp}) = innertype(basistype(O))
+ManyBody.reptype(O::Type{<:RaiseLowerOp}) = Vector{RLOp{innertype(basistype(O))}}
+
+ManyBody.rep(op::RLOp) = op.state
+ManyBody.rep(op::RaiseLowerOp) = op.rlops
+
+function applyop!(op::RaiseOP{SP}, b::Bases.Slater{SP}) where SP<:ConcreteBasis
+    sgn = create!(b, op.state)
+    if sgn > 0
+        b
+    elseif sgn == 0
+        States.Zero()
+    else
+        -b
     end
+end
+function applyop!(op::LowerOp{SP}, b::Bases.Slater{SP}) where SP<:ConcreteBasis
+    sgn = annihil(b, op.state)
+    if sgn > 0
+        b
+    elseif sgn == 0
+        States.Zero()
+    else
+        -b
+    end
+end
+function applyop(op::RLOp{SP}, b::Bases.Slater{SP}) where SP<:ConcreteBasis
+    ret = deepcopy(b)
+    applyop!(op, ret)
+end
 
-    ArrayOperator{nbodies(op), Bases.Index{basistype(op)}}(arr)
+applyop!(op::RaiseLowerOp{SP}, b::Bases.Slater{SP}) where SP<:ConcreteBasis =
+    foldr(applyop!, b, op.rlops)
+function applyop(op::RaiseLowerOp{SP}, b::Bases.Slater{SP}) where SP<:ConcreteBasis
+    ret = deepcopy(b)
+    applyop!(op, ret)
 end
 
 struct Raised{T}; val::T end
 ↑(x) = Raised(x)
 
-struct RaiseOp{B<:AbstractBasis}; state::B end
-struct LowerOp{B<:AbstractBasis}; state::B end
-RaiseOp(s::Bases.Sub{B}) where B = RaiseOp{B}(s.state)
-LowerOp(s::Bases.Sub{B}) where B = LowerOp{B}(s.state)
-const RLOp{B} = Union{RaiseOp{B}, LowerOp{B}}
-
-struct RaiseLowerOps{B<:AbstractBasis}
-    ops::Vector{RLOp{B}}
-end
-
-Base.:(==)(::RLOp, RLOp) = false
-Base.:(==)(a::R, b::R) where R<:RLOp = a.state == b.state
-Base.:(==)(::RaiseLowerOps, ::RaiseLowerOps) = false
-Base.:(==)(a::R, b::R) where R<:RaiseLowerOps = a.ops == b.ops
-
-Base.convert(::Type{RaiseLowerOps{B}}, a::RLOp{B}) where B<:AbstractBasis =
-    RaiseLowerOps{B}([a])
-Base.convert(::Type{RaiseLowerOps}, a::RLOp{B}) where B<:AbstractBasis = RaiseLowerOps{B}([a])
-
-Base.:*(op1::RLOp{B}, op2::RLOp{B}) where B<:AbstractBasis = RaiseLowerOps{B}([op1, op2])
-Base.:*(op1::RLOp{B}, op2::RaiseLowerOps{B}) where B<:AbstractBasis =
-    RaiseLowerOps{B}([op1; op2.ops])
-Base.:*(op1::RaiseLowerOps{B}, op2::RLOp{B}) where B<:AbstractBasis =
-    RaiseLowerOps{B}([op2.ops; op2])
-Base.:*(op1::RaiseLowerOps{B}, op2::RaiseLowerOps{B}) where B<:AbstractBasis =
-    RaiseLowerOps{B}([op1.ops; op2.ops])
-Base.adjoint(op::RaiseOp{B}) where B<:AbstractBasis = LowerOp{B}(op.state)
-Base.adjoint(op::LowerOp{B}) where B<:AbstractBasis = RaiseOp{B}(op.state)
-Base.adjoint(op::RaiseLowerOps{B}) where B<:AbstractBasis =
-    RaiseLowerOps{B}(reverse(map(adjoint, op.ops)))
-
 A(sps...) = A(sps)
 A(T::Type, sps...) = A(T, sps)
 
-A(p::AbstractBasis) = LowerOp(p)
-A(p::Bra{<:AbstractBasis}) = RaiseOp(p.state)
+A(p::ConcreteBasis) = LowerOp(p)
+A(p::Bra{<:ConcreteBasis}) = RaiseOp(p.state)
+A(p::Raised{<:ConcreteBasis}) = RaiseOp(p.val)
 
 @generated function A(sps::NTuple{N, Union{T, Bra{T}, Raised{T}}}) where
-                     {B<:AbstractBasis, T<:Bases.MaybeSub{B}, N}
+                     {B<:ConcreteBasis, N, T<:Bases.Rep{B}}
     args = map(enumerate(sps.parameters)) do x
         i, U = x
         if U <: Bra
             :(RaiseOp(sps[$i].state))
         elseif U <: Raised
-            :(RaiseOp(sps[$i].val))
+            if U.parameters[1] <: Wrapped{B}
+                :(RaiseOp(inner(sps[$i].val)))
+            else
+                :(RaiseOp(sps[$i].val))
+            end
+        elseif U <: Wrapped{B}
+            :(LowerOp(inner(sps[$i])))
         else
             :(LowerOp(sps[$i]))
         end
     end
 
-    :(RaiseLowerOps{B}([$(args...)]))
+    :(RaiseLowerOp{B}([$(args...)]))
 end
 
-n_ops(::RLOp) = 1
-n_ops(a::RaiseLowerOps) = length(a.ops)
-
-refop(s::Bases.Sub{B}) where B<:AbstractBasis = refop(s.state)
-function refop(s::Bases.Slater{B}) where B<:AbstractBasis
-    a = RaiseLowerOps{B}(map(x -> RaiseOp{B}(indexp(R, x)), find(s.parts)))
-    b = RaiseLowerOps{B}(map(x -> LowerOp{B}(indexh(R, x)), find(s.holes)))
-    a*b
+refop(s::Bases.Wrapped) = refop(inner(s))
+function refop(R::RefState{B}, s::Bases.Slater{B}) where B<:ConcreteBasis
+    BI = indextype(B)
+    RaiseLowerOp{B}(isocc(R, BI[I]) ? LowerOp{B}(B[I]) : RaiseOp{B}(B[I])
+                    for I in eachindex(B)
+                    if isocc(R, BI[I]) && ~s.bits[I] || ~isocc(R, BI[I]) && s.bits[I])
 end
 
-normord(a::RaiseLowerOps{B}) where B<:AbstractBasis = normord(RefStates.Vacuum{B}, a)
-function normord(::Type{R}, a::RaiseLowerOps{B}) where {B<:AbstractBasis, R<:RefState{B}}
+normord(a::RaiseLowerOp) = normord(RefStates.Vacuum(basistype(B)), a)
+function normord(R::RefState{B}, a::RaiseLowerOp{B}) where B<:ConcreteBasis
     function comp(a, b)
         if a[2] && b[2]
             index(a[1]) >= index(b[1])
@@ -253,54 +273,27 @@ function normord(::Type{R}, a::RaiseLowerOps{B}) where {B<:AbstractBasis, R<:Ref
     end
 
     p = sortperm(xs, lt=comp)
+    sgn = levicivita(p)
 
-    (levicivita(p), RaiseLowerOps(a.ops[p]))
-end
-
-@generated (a::RaiseLowerOps)(X::Bases.MaybeSub{<:Bases.Slater}) = quote
-    z = zero(Vector(X))
-    Y = deepcopy(convert(Bases.Slater, X))
-    B = typeof(Y)
-
-    sgn = 1
-    for i = length(a.ops):-1:1
-        sgn *= if a.ops[i] isa RaiseOp
-            if a.ops[i].state in Y
-                return ZeroState()
-            else
-                create!(Y, a.ops[i].state)
-            end
-        else
-            if !(a.ops[i].state in Y)
-                return ZeroState()
-            else
-                annihil!(Y, a.ops[i].state)
-            end
-        end
+    ret = RaiseLowerOp(a.ops[p])
+    if p > 0
+        ret
+    elseif p < 0
+#        ActionOperator{Bases.Slater{B}, Int}(x -> -ret(x))
+        -ret
+    else
+        error("IMPOSSIBLE")
     end
-
-    # Probably a better way to do this.
-    $(if X <: Bases.Sub
-          quote
-              Z = convert(typeof(X), Y)
-              if Z in typeof(X)
-                  Y = Z
-              end
-          end
-      else
-          :()
-      end)
-    sgn == 1 ? Y : sgn*Y
 end
 
 Base.show(io::IO, x::RaiseOp) = print(io, "A($(x.state)')")
 Base.show(io::IO, x::LowerOp) = print(io, "A($(x.state) )")
-function Base.show(io::IO, x::RaiseLowerOps)
+function Base.show(io::IO, x::RaiseLowerOp)
     f(a::RaiseOp) = "$(a.state)'"
     f(a::LowerOp) = "$(a.state) "
 
-    print(io, "A(", f(x.ops[1]))
-    for op in x.ops[2:end]
+    print(io, "A(", f(x.rlops[1]))
+    for op in x.rlops[2:end]
         print(io, ", $(f(op))")
     end
     print(io, ")")
@@ -310,53 +303,54 @@ function Base.show(io::IO, mime::MIME"text/plain", x::AbstractOperator)
     show(io, mime, rep(x))
 end
 
-# Add Operator val type?
-@generated Base.zero(::Type{<:ActionOperator{N, B, T}}) where
-                    {N, B<:AbstractBasis, T} =
-    :(ActionOperator{N, B, T}((@ntuple($N, _) -> zeros(T, $(fill(dim(B), N)...)))))
-@generated Base.zero(::Type{<:FunctionOperator{N, B, T}}) where
-                    {N, B<:AbstractBasis, T} =
-    :(FunctionOperator{N, B, T}((@ntuple($(2N), _) -> zero(T))))
-@generated Base.zero(::Type{<:ArrayOperator{N, B, <:Any, A}}) where
-                    {N, B<:AbstractBasis, A<:AbstractArray} =
-    :(ArrayOperator{N, B}(zero(similar(A, $(fill(dim(B), 2N)...)))))
+Base.zero(O::Type{<:ActionOperator}) = O(a -> States.Zero())
+Base.zero(O::Type{<:FunctionOperator}) = O((a, b) -> zero(eltype(O)))
+Base.zero(O::Type{<:ArrayOperator}) = O(zero(similar(reptype(O), innerdims(basistype(O)))))
+### No sensible zero for RLOp...
+## And this is but vaguely sensible, and so shall be omitted
+#Base.zero(O::RaiseLowerOp) = O*O
 
-#@generated Base.adjoint(op::ActionOperator{N, B, T}) where {N, B<:AbstractBasis, T} =
-#    :(ActionOperator{N, B, T}(@ntuple($N, b) ->
-#                                    conj.(permutedims(@ncall($N, rep(op), b), $N:-1:1))))
-@generated function Base.adjoint(op::FunctionOperator{N, B, T}) where {N, B<:AbstractBasis, T}
-    reversed = [Symbol("arg_$i") for i = 2N:-1:1]
-    :(FunctionOperator{N, B, T}(@ntuple($(2N), arg) -> conj(rep(op)($(reversed...)))))
+function Base.:+(a::ActionOperator{B}, b::ActionOperator{B}) where B<:ConcreteBasis
+    Ta, Tb = eltype.((a, b))
+    fa, fb = rep.((a, b))
+    ActionOperator{B, promote_type(Ta, Tb)}(x -> fa(x) + fb(x))
 end
-Base.adjoint(op::ArrayOperator{N, B}) where {N, B<:AbstractBasis} =
-    ArrayOperator{N, B}(conj.(permutedims(rep(op), 2N:-1:1)))
 
-for op in (:*, :+, :-)
-    @eval Base.$op(As::ArrayOperator{N, B}...) where {N, B<:AbstractBasis} =
-        ArrayOperator{N, B}($op(map(A -> rep(A), As)...))
-    ## Should allow different T's. Also, @generate this
-    @eval Base.$op(As::ActionOperator{N, B, T}...) where {N, B<:AbstractBasis, T} =
-        ActionOperator{N, B, T}((args...) -> $op(map(A -> rep(A)(args...), As)...))
-    @eval Base.$op(As::FunctionOperator{N, B, T}...) where {N, B<:AbstractBasis, T} =
-        FunctionOperator{N, B, T}((args...) -> $op(map(A -> rep(A)(args...), As)...))
+function Base.:+(a::FunctionOperator{B}, b::FunctionOperator{B}) where B<:ConcreteBasis
+    Ta, Tb = eltype.((a, b))
+    fa, fb = rep.((a, b))
+    FunctionOperator{B, promote_type(Ta, Tb)}((x, y) -> fa(x, y) + fb(x, y))
 end
-for op in (:*, :\)
-    @eval Base.$op(x::Number, A::ArrayOperator{N, B}) where {N, B<:AbstractBasis} =
-        ArrayOperator{N, B}($op(x, rep(A)))
-    ## Should allow different T's...
-    @eval Base.$op(x::Number, A::ActionOperator{N, B, T}) where {N, B<:AbstractBasis, T} =
-        ActionOperator{N, B, T}((args...) -> $op(x, rep(op)(args...)))
-    @eval Base.$op(x::Number, A::FunctionOperator{N, B, T}) where {N, B<:AbstractBasis, T} =
-        FunctionOperator{N, B, T}((args...) -> $op(x, rep(op)(args...)))
+
+Base.:+(a::ArrayOperator{B}, b::ArrayOperator{B}) where B<:ConcreteBasis =
+    ArrayOperator{B}(rep(a) + rep(B))
+
+Base.:+(a::AnyRLOp{B}, b::AnyRLOp{B}) where B<:ConcreteBasis =
+    ActionOperator{Bases.Slater{B}, Int}(x -> a(x) + b(x))
+
+Base.:-(a::ActionOperator) = (fa=rep(a); ActionOperator{basistype(a), eltype(a)}(x -> -fa(x)))
+function Base.:-(a::FunctionOperator)
+    fa = rep(a)
+    FunctionOperator{basistype(a), eltype(a)}((x, y) -> -fa(x, y))
 end
-for op in (:*, :/)
-    @eval Base.$op(A::ArrayOperator{N, B}, x::Number) where {N, B<:AbstractBasis} =
-        ArrayOperator{N, B}($op(rep(A), x))
-    ## Should allow different T's...
-    @eval Base.$op(A::ActionOperator{N, B, T}, x::Number) where {N, B<:AbstractBasis, T} =
-        ActionOperator{N, B, T}((args...) -> $op(rep(A)(args...), x))
-    @eval Base.$op(A::FunctionOperator{N, B, T}, x::Number) where {N, B<:AbstractBasis, T} =
-        FunctionOperator{N, B, T}((args...) -> $op(rep(A)(args...), x))
+Base.:-(a::ArrayOperator) = typeof(a)(-rep(a))
+Base.:-(a::AnyRLOp) = ActionOperator{basistype(a), Int}(x -> -a(x))
+
+Base.:-(a::AbstractOperator, b::AbstractOperator) = a + -b
+
+@commutes function Base.:*(c::Number, a::ActionOperator)
+    T = promote_type(typeof(c), eltype(a))
+    f = rep(a)
+    ActionOperator{basistype(a), T}(x -> c*f(x))
 end
+@commutes function Base.:*(c::Number, a::FunctionOperator)
+    T = promote_type(typeof(c), eltype(a))
+    f = rep(a)
+    FunctionOperator{basistype(a), T,}((x, y) -> c*f(x, y))
+end
+@commutes Base.:*(c::Number, a::ArrayOperator) =
+    ArrayOperator{basistype(a)}(c*rep(a))
+@commutes Base.:*(c::Number, a::AnyRLOp) =
+    ActionOperator{basistype(a), promote_type(typeof(c), Int)}(x -> c*a(x))
 
 end # module Operators

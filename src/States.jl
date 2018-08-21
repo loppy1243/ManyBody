@@ -137,7 +137,7 @@ overlap(a::B, b::B) where B<:AbstractBasis = a == b
 overlap(a::Bases.MaybeNeg{B}, b::Bases.MaybeNeg{B}) where B<:ConcreteBasis =
     -(inner(a) == inner(b))
 overlap(a::B, b::B) where B<:Bases.Neg = a == b
-@commutes conj overlap(a::Bases.Neg{B}, b::MaybeMixed{B}) where B<:ConcreteBasis =
+@commutes (:) conj overlap(a::Bases.Neg{B}, b::AbstractState) where B<:ConcreteBasis =
     -overlap(inner(a), b)
 
 overlap(::Zero, ::Zero) = 0
@@ -145,14 +145,13 @@ overlap(::Zero, ::Zero) = 0
 @commutes overlap(::Zero, b::Mixed) = zero(eltype(b))
 
 overlap(a::S, b::S) where S<:Scaled = conj(a.coeff)*b.coeff*overlap(a.state, b.state)
-overlap(a::ArrayState{B}, b::ArrayState{B}) where B<:ConcreteBasis =
-    vec(rep(a))'vec(rep(b))
+overlap(a::ArrayState{B}, b::ArrayState{B}) where B<:ConcreteBasis = vec(rep(a))'vec(rep(b))
 
-@commutes conj overlap(a::Scaled{B}, b::MaybeMixed{B}) where B<:ConcreteBasis =
+@commutes (:) conj overlap(a::Scaled{B}, b::MaybeMixed{B}) where B<:ConcreteBasis =
     conj(a.coeff)*overlap(a.state, b)
 
-@commutes conj overlap(a::B, b::ArrayState{B}) where B<:ConcreteBasis = rep(b)[index(a)]
-@commutes conj overlap(a::Bases.Index{B}, b::ArrayState{B}) where B<:ConcreteBasis =
+@commutes (:) conj overlap(a::B, b::ArrayState{B}) where B<:ConcreteBasis = rep(b)[index(a)]
+@commutes (:) conj overlap(a::Bases.Index{B}, b::ArrayState{B}) where B<:ConcreteBasis =
     rep(b)[index(a)]
 
 end # module States

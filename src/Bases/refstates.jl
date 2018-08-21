@@ -10,6 +10,9 @@ module RefStates
     
     struct Vacuum{B<:ConcreteBasis} <: RefState{B} end
     struct Fermi{B<:ConcreteBasis, F} <: RefState{B} end
+
+    Vacuum(B::Type{<:ConcreteBasis}) = Vacuum{B}()
+    Fermi(B::Type{<:ConcreteBasis}, F::Int) = Fermi{B, F}()
 end # module RefStates
 
 ManyBody.basistype(::Type{<:RefState{B}}) where B<:ConcreteBasis = B

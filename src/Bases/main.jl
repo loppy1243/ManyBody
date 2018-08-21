@@ -42,5 +42,6 @@ include("baseops/main.jl")
 
     ret
 end
+IndexType(::Type{<:Paired}) = IndexTypes.Linear()
 
 end # module States

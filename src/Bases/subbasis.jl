@@ -22,26 +22,28 @@ indexbasis(B::Type{<:Sub}, ix) = basis(B)[ix]
 innertype(::Type{<:Sub{B}}) where B<:ConcreteBasis = B
 inner(s::Sub{<:ConcreteBasis}) = s.state
 
-get_tys(s::Symbol) = [s]
-get_tys(x::Expr) = if x.head == :curly
-    reduce(vcat, map(get_tys, x.args[2:end]))
-else
-    []
-end
-function get_free_tys(tys, x::Expr)
-    @assert x.head === :curly
-    ret = []
-    for y in x.args[2:end]
-        @assert y isa Symbol || y isa Expr && y.head === :(<:)
-        if !(y in tys)
-            push!(ret, y)
+macro IndexType(args...) end
+
+macro _defSub(ty_expr::Expr, expr)
+    get_tys(s::Symbol) = [s]
+    get_tys(x::Expr) = if x.head == :curly
+        reduce(vcat, map(get_tys, x.args[2:end]))
+    else
+        []
+    end
+    function get_free_tys(tys, x::Expr)
+        @assert x.head === :curly
+        ret = []
+        for y in x.args[2:end]
+            @assert y isa Symbol || y isa Expr && y.head === :(<:)
+            if !(y in tys)
+                push!(ret, y)
+            end
         end
+    
+        ret
     end
 
-    ret
-end
-## FIXME: Define IndexType(::Type{<:Sub})
-macro _defSub(ty_expr::Expr, expr)
     @assert ty_expr.head == :(<:)
 
     name(x::Symbol) = x
