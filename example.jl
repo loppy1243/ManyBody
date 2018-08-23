@@ -17,7 +17,7 @@ Bases.IndexType(::Type{<:NPairing}) = Bases.IndexTypes.Linear()
 
 const LEVEL_SPACING = 1
 const SPBASIS = Bases.Pairing{4}
-const REFSTATE = RefStates.Fermi{2, SPBASIS}
+const REFSTATE = RefStates.Fermi{SPBASIS, 2}
 const MBBASIS = Bases.Paired{2, 4}
 #const MBBASIS = NPairing{4, 4}
 
@@ -39,4 +39,4 @@ H(g) = f(g) + V(g)
 main() = tabulate(H(1.0))
 
 end # module Exec
-main()
+Exec.main()

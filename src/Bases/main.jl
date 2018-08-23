@@ -1,6 +1,7 @@
 @reexport module Bases
-export RefStates, AbstractState, AbstractBasis, RefState
+export AbstractBasis, ConcreteBasis, LeafBasis, RefStates, RefState
 
+import ..ManyBody
 using ..AbstractState
 using Base.Cartesian: @ncall
 using LinearAlgebra: Adjoint
@@ -13,15 +14,17 @@ abstract type LeafBasis <: AbstractBasis end
 abstract type AbstractIndex{B<:ConcreteBasis} <: LeafBasis end
 const MaybeIndex{B<:ConcreteBasis} = Union{B, AbstractIndex{B}}
 
-include("interface.jl")
-include("iter.jl")
+ManyBody.basistype(x::AbstractBasis) = basistype(typeof(x))
+ManyBody.basistype(B::Type{<:AbstractBasis}) = B
+
 include("indexbasis.jl")
 include("subbasis.jl")
 include("product.jl")
+include("interface.jl")
+include("iter.jl")
 include("pairing.jl")
 include("refstates.jl")
 include("slater.jl")
-include("baseops/main.jl")
 
 @defSub Paired{F, L} <: Slater{Pairing{L}} begin
     SP = Pairing{L}

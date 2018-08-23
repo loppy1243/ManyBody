@@ -17,14 +17,12 @@ Base.promote_rule(SB::Type{<:Sub}, B::Type{<:ConcreteBasis}) = promote_type(inne
 
 dim(B::Type{<:Sub}) = length(basis(B))
 index(b::Sub) = findfirst(==(b), basis(typeof(b)))
-indexbasis(B::Type{<:Sub}, ix) = basis(B)[ix]
+indexbasis(B::Type{<:Sub}, ix::Union{Int, Base.CartesianIndex}) = basis(B)[ix]
 
 innertype(::Type{<:Sub{B}}) where B<:ConcreteBasis = B
 inner(s::Sub{<:ConcreteBasis}) = s.state
 
-macro IndexType(args...) end
-
-macro _defSub(ty_expr::Expr, expr)
+macro defSub(ty_expr::Expr, expr)
     get_tys(s::Symbol) = [s]
     get_tys(x::Expr) = if x.head == :curly
         reduce(vcat, map(get_tys, x.args[2:end]))

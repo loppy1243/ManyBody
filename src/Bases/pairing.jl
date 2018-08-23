@@ -22,8 +22,8 @@ Base.:(==)(p1::Pairing{L}, p2::Pairing{L}) where L =
 index(sp::Pairing) = 2(sp.level-1) + 1 + Bool(sp.spin)
 
 function indexbasis(B::Type{<:Pairing}, pn::Int) where L
-    s_num = Bool(1 - i % 2)
-    l = div(i - s_num - 1, 2) + 1
+    s_num = Bool(1 - pn % 2)
+    l = div(pn - s_num - 1, 2) + 1
     B(l, Spin(s_num))
 end
 
@@ -39,7 +39,7 @@ spin(sp::Wrapped) = spin(inner(sp))
 
 SpinMod.spinup(sp) = spinup(spin(sp))
 
-dim(B::Type{<:Pairing}) = 2nlevel(B)
+dim(B::Type{<:Pairing}) = 2nlevels(B)
 
 Base.show(io::IO, x::Pairing) = print(io, level(x), spinup(spin(x)) ? "↑" : "↓")
 function Base.show(io::IO, ::MIME"text/plain", x::Pairing)

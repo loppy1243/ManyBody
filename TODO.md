@@ -57,5 +57,7 @@ x At least conceptually, this is what we want:
   const VectorState
   ```
 x Create two index types: `LinearIndex` and `CartesianIndex`, similar to what is in `Base`.
-- Add way to select `IndexType(::Type{<:Sub})` in `@defSub`
+x Add way to select `IndexType(::Type{<:Sub})` in `@defSub`
   - Define `innerdims()`
+  - [NOTE] This is unnecessary, as it can just be defined after definition of the subbasis
+- [IDEA] Use `Base.IndexStyle{}` instead of custom `IndexType`

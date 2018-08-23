@@ -1,20 +1,20 @@
 module ManyBody
-export Bases, States
+export Bases, States, Operators, basistype, reptype
 
 using Reexport: @reexport
 
-abstract type AbstractState end
-
 include("util.jl")
-using .@disallow
-include("SpinMod.jl")
-include("Bases/main.jl")
+
+abstract type AbstractState end
 
 basistype(x) = basistype(typeof(x))
 @disallow basistype(::Type)
-basistype(x::AbstractBasis) = basistype(typeof(x))
-basistype(B::Type{<:AbstractBasis}) = B
 
+reptype(x) = reptype(typeof(x))
+@disallow reptype(::Type)
+
+include("SpinMod.jl")
+include("Bases/main.jl")
 include("States.jl")
 include("Operators.jl")
 

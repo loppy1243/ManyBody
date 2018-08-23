@@ -45,7 +45,7 @@ function indexbasis(B::Type{<:Slater}, ix::Int)
         bits[i] = (ix & (1 << (i-1))) != 0
     end
 
-    Slater{B}(bits)
+    B(bits)
 end
 
 dim(::Type{Slater{B}}) where B = 2^dim(B) - 1

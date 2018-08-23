@@ -1,5 +1,6 @@
 export RefStates, RefState, Vacuum, Fermi, parts, holes, nparts, pindex, hindex, occ, unocc,
        n_occ, n_unocc, isocc, ishole, ispart, nholes, nparts, fermilevel
+import ..ManyBody
 
 abstract type RefState{B<:ConcreteBasis} end
 

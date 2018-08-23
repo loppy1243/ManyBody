@@ -1,3 +1,5 @@
+export indextype, rank
+
 module IndexTypes
     export IndexType
 
@@ -21,7 +23,6 @@ struct LinearIndex{B<:ConcreteBasis} <: AbstractIndex{B}
     LinearIndex{B}(index::Int, ::IndexTypes.Linear) where B<:ConcreteBasis = new(index)
 end
 LinearIndex{B}(index::Int) where B<:ConcreteBasis = LinearIndex{B}(index, IndexType(B))
-LinearIndex(b::ConcreteBasis) = LinearIndex{typeof(B)}(index(b))
 
 struct CartesianIndex{B<:ConcreteBasis, N} <: AbstractIndex{B}
     index::CartesianIndex{N}
@@ -35,7 +36,6 @@ CartesianIndex{B, N}(index) where {N, B<:ConcreteBasis} =
 CartesianIndex{B}(index) where B<:ConcreteBasis = CartesianIndex{B, length(index)}(index)
 CartesianIndex{B}(indices::Int...) where B<:ConcreteBasis =
     CartesianIndex{B, length(indices)}(indices)
-CartesianIndex(b::ConcreteBasis) = CartesianIndex(index(b))
 
 dim(I::Type{<:AbstractIndex}) = dim(innertype(I))
 innerdims(I::Type{AbstractIndex}) = innerdims(innertype(I))
@@ -55,8 +55,11 @@ inner(I::AbstractIndex) = innertype(I)[I]
 Base.:(==)(a::I, b::I) where I<:AbstractIndex = index(a) == index(b)
 
 Base.convert(B::Type{<:ConcreteBasis}, I::AbstractIndex) = convert(B, inner(I))
-Base.convert(I::Type{<:AbstractIndex}, b::AbstractIndex) = I(convert(innertype(I), inner(b)))
-Base.convert(I::Type{<:AbstractIndex}, b::ConcreteBasis) = I(convert(innertype(I), n))
+Base.convert(I::Type{<:AbstractIndex}, b::AbstractIndex) = convert(I, convert(innertype(I), inner(b)))
 
-Base.convert(I::Type{<:LinearIndex}, b::ConcreteBasis) = I(convert(innerype(I), b))
-Base.convert(::Type{LinearIndex{B}}, b::LinearIndex{B}) = b 
+Base.convert(I::Type{<:AbstractIndex}, b::ConcreteBasis) = I(index(convert(innertype(I), b)))
+Base.convert(::Type{AbstractIndex}, b::ConcreteBasis) = indextype(B)(index(b))
+Base.convert(::Type{LinearIndex{B}}, b::B) where B<:ConcreteBasis = LinearIndex{B}(index(b))
+Base.convert(::Type{<:CartesianIndex{B}}, b::B) where B<:ConcreteBasis =
+    CartesianIndex{B}(index(b))
+#Base.convert(::Type{LinearIndex{B}}, b::LinearIndex{B}) where B<:ConcreteBasis = b 

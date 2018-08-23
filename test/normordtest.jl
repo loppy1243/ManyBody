@@ -18,7 +18,7 @@ function normordtest()
     end
 
     @testset "Fermi{2}" begin
-        sgn, Na = normord(RefStates.Fermi{2, SPBASIS}, a)
+        sgn, Na = normord(RefStates.Fermi(SPBASIS, 2), a)
         @debug("Testing normord wrt. Fermi{2}",
                input   = (1, a),
                want    = (-1, A(s', p', q', r)),

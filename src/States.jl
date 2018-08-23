@@ -1,21 +1,21 @@
 @reexport module States
-export ArrayState, F64ArrayState, CF64ArrayState, VectorState, overlap
+export ArrayState, F64ArrayState, CF64ArrayState, overlap
+import ..ManyBody
 using ..Bases
 using ..AbstractState, ..@commutes
 
 abstract type Mixed{B<:ConcreteBasis, T} <: AbstractState end
 
-struct Bra{S<:AbstractState} end
+struct Bra{S<:AbstractState}; state::S end
 struct Zero <: AbstractState end
 
 struct Scaled{B<:ConcreteBasis, T} <: Mixed{B, T}
     coeff::T
     state::B
 end
-const CF64Scaled{B<:ConcreteBasis} <: Scaled{B, ComplexF64}
+const CF64Scaled{B<:ConcreteBasis} = Scaled{B, ComplexF64}
 
 Scaled(T::Type, b::ConcreteBasis) = Scaled{typeof(b), T}(one(T), b)
-Scaled(c, b::ConcreteBasis) = Scaled{B, typeof(c)}(c, b)
 
 struct ArrayState{B<:ConcreteBasis, T, A<:AbstractArray{T}} <: Mixed{B, T}
     coeffs::A
@@ -26,12 +26,9 @@ struct ArrayState{B<:ConcreteBasis, T, A<:AbstractArray{T}} <: Mixed{B, T}
         new(coeffs)
     end
 end
-const CF64ArrayState{B<:ConcreteBasis} =
-    ArrayState{B, ComplexF64, Array{ComplexF64, N}}
-const F64ArrayState{B<:ConcreteBasis} = ArrayState{B, Float64, Array{Float64, N}}
-
-const CF64VectorState{B<:ConcreteBasis} = VectorState{B, ComplexF64, Vector{ComplexF64}}
-const F64VectorState{B<:ConcreteBasis} = VectorState{B, Float64, Vector{FloatF64}}
+const CF64ArrayState{B<:ConcreteBasis, A<:Array{ComplexF64}} =
+    ArrayState{B, ComplexF64, A}
+const F64ArrayState{B<:ConcreteBasis, A<:Array{ComplexF64}} = ArrayState{B, Float64, A}
 
 ArrayState{B}(coeffs::AbstractArray) where B<:ConcreteBasis =
     ArrayState{B, eltype(coeffs), typeof(coeffs)}(coeffs)
@@ -72,7 +69,7 @@ function Base.convert(S1::Type{<:ArrayState}, s2::ArrayState)
 
     ret = similar(A1, innerdims(B1))
     for I in eachindex(B2)
-        ret[index(B1_I[B2_I[I]])] = rep(s2)[I]
+        ret[index(B1_I[B2_I[I]])] = s2.coeffs[I]
     end
 end
 
@@ -84,8 +81,6 @@ ManyBody.basistype(::Type{<:Mixed{B}}) where B<:AbstractBasis = B
 
 Base.eltype(::Type{<:Mixed{<:Any, T}}) where T = T
 
-ManyBody.rep(s::Scaled) = (s.coeff, s.state)
-ManyBody.rep(s::ArrayState) = s.coeffs
 ManyBody.reptype(S::Type{<:Scaled}) = Tuple{eltype(S), basistype(S)}
 ManyBody.reptype(S::Type{<:ArrayState{<:Any, <:Any, A}}) where A<:AbstractArray = A
 
@@ -94,13 +89,10 @@ Base.zero(s::ArrayState) = typeof(s)(zero(s.coeffs))
 @generated Base.zero(S::Type{<:ArrayState}) =
     :(S(zero(similar(reptype(S), $(fill(dim(basistype(S)), rank(S))...)))))
 
-### Update line
-##############################################################################################
-
 @commutes Base.:*(c::Number, b::ConcreteBasis) = Scaled(c, b)
 @commutes Base.:*(c::Number, b::Bases.Neg) = Scaled(-c, inner(b))
 @commutes Base.:*(c::Number, s::Scaled) = Scaled(c*s.coeff, s.state)
-@commutes Base.:*(c::Number, s::ArrayState) = ArrayState{basistype(s)}(c*rep(s))
+@commutes Base.:*(c::Number, s::ArrayState) = ArrayState{basistype(s)}(c*s.coeffs)
 
 Base.:/(s::AbstractState, c::Number) = inv(c)*s
 Base.:\(c::Number, s::AbstractState) = inv(c)*s
@@ -122,10 +114,11 @@ else
     ArrayState(A, a) + ArrayState(A, b)
 end
 Base.:+(a::ArrayState{B}, b::ArrayState{B}) where B<:ConcreteBasis =
-    ArrayState{B}(rep(a) + rep(b))
+    ArrayState{B}(a.coeffs + b.coeffs)
 
+Base.:-(::Zero) = Zero()
 Base.:-(a::Scaled) = Scaled(-a.coeff, a.state)
-Base.:-(a::ArrayState) = ArrayState{basistype(a)}(-rep(a))
+Base.:-(a::ArrayState) = ArrayState{basistype(a)}(-a.coeffs)
 Base.:-(a::AbstractState, b::AbstractState) = a + -b
 
 Base.adjoint(s::AbstractState) = Bra(s)
@@ -134,9 +127,6 @@ Base.:*(bra::Bra, ket::AbstractState) = overlap(bra.state, ket)
 overlap(a::AbstractState, b::AbstractState) = overlap(promote(a, b)...)
 
 overlap(a::B, b::B) where B<:AbstractBasis = a == b
-overlap(a::Bases.MaybeNeg{B}, b::Bases.MaybeNeg{B}) where B<:ConcreteBasis =
-    -(inner(a) == inner(b))
-overlap(a::B, b::B) where B<:Bases.Neg = a == b
 @commutes (:) conj overlap(a::Bases.Neg{B}, b::AbstractState) where B<:ConcreteBasis =
     -overlap(inner(a), b)
 
@@ -145,13 +135,11 @@ overlap(::Zero, ::Zero) = 0
 @commutes overlap(::Zero, b::Mixed) = zero(eltype(b))
 
 overlap(a::S, b::S) where S<:Scaled = conj(a.coeff)*b.coeff*overlap(a.state, b.state)
-overlap(a::ArrayState{B}, b::ArrayState{B}) where B<:ConcreteBasis = vec(rep(a))'vec(rep(b))
+@commutes (:) conj overlap(a::Scaled, b::AbstractState) = conj(a.coeff)*overlap(a.state, b)
 
-@commutes (:) conj overlap(a::Scaled{B}, b::MaybeMixed{B}) where B<:ConcreteBasis =
-    conj(a.coeff)*overlap(a.state, b)
-
-@commutes (:) conj overlap(a::B, b::ArrayState{B}) where B<:ConcreteBasis = rep(b)[index(a)]
-@commutes (:) conj overlap(a::Bases.Index{B}, b::ArrayState{B}) where B<:ConcreteBasis =
-    rep(b)[index(a)]
+overlap(a::ArrayState{B}, b::ArrayState{B}) where B<:ConcreteBasis =
+    vec(a.coeffs)'vec(b.coeffs)
+@commutes (:) conj overlap(a::Bases.MaybeIndex{B}, b::ArrayState{B}) where B<:ConcreteBasis =
+    b.coeffs[index(a)]
 
 end # module States

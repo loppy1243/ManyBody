@@ -14,15 +14,15 @@ Base.lastindex(B::Type{<:AbstractBasis}) = last(eachindex(B))
 
 function Base.iterate(B::Type{<:AbstractBasis})
     ix_iter = eachindex(B)
-    (ix_iter_st = iterate(ix_iter)) === nothing && return nothing
+    (ix_iter_ret = iterate(ix_iter)) === nothing && return nothing
 
-    (B[ix_iter_st[1]], (ix_iter, ix_iter_st))
+    (B[ix_iter_ret[1]], (ix_iter, ix_iter_ret[2]))
 end
 function Base.iterate(B::Type{<:AbstractBasis}, st)
     ix_iter, ix_iter_st = st
-    (ix_iter_st = iterate(ix_iter, ix_iter_st)) === nothing && return nothing
+    (ix_iter_ret = iterate(ix_iter, ix_iter_st)) === nothing && return nothing
 
-    (B[ix_iter_st[1]], (ix_iter, ix_iter_st))
+    (B[ix_iter_ret[1]], (ix_iter, ix_iter_ret[2]))
 end
 Base.IteratorSize(B::Type{<:AbstractBasis}) = Base.HasLength()
 Base.IteratorEltype(B::Type{<:AbstractBasis}) = Base.HasEltype()
