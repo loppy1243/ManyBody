@@ -158,7 +158,7 @@ end
 #    end
 #end
 
-tabulate(op) = tabulate(Array{ComplexF64}, op)
+tabulate(op) = tabulate(Array{eltype(op)}, op)
 tabulate(A::Type{<:AbstractArray}, op::ArrayOperator) =
     ArrayOperator{basistype(op)}(convert(A, op.rep))
 function tabulate(A::Type{<:AbstractArray}, op::AbstractOperator)
