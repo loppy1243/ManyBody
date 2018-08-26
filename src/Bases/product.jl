@@ -55,6 +55,9 @@ dim(B::Type{<:Product}) = prod(innerdims(B))
 ## Note that we consider the products X*Y and Y*X as distinct (yet of course isomorphic).
 Base.:(==)(a::B, b::B) where B<:Product = a.states == b.states
 
+Base.getindex(b::Product, i::Int) = b.states[i]
+Base.getindex(b::Product, ixs::AbstractArray) = map(i -> b.states[i], ixs)
+
 function Base.promote_rule(P1::Type{<:Product{N}}, P2::Type{<:Product{N}}) where N
     tys = map(promote_type, innertypes(P1), innertypes(P2))
     Product{N, Tuple{ty_args...}}
