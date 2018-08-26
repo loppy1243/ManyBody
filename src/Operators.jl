@@ -44,8 +44,9 @@ struct ArrayOperator{B<:ConcreteBasis, T, A<:AbstractArray{T}} <: AbstractOperat
         new(rep)
     end
 end
-const CF64ArrayOperator{B<:ConcreteBasis} = ArrayOperator{B, ComplexF64, <:Array{ComplexF64}}
-const F64ArrayOperator{B<:ConcreteBasis} = ArrayOperator{B, Float64, <:Array{Float64}}
+const CF64ArrayOperator{B<:ConcreteBasis, N2} =  
+    ArrayOperator{B, ComplexF64, Array{ComplexF64, N2}}
+const F64ArrayOperator{B<:ConcreteBasis, N2} = ArrayOperator{B, Float64, Array{Float64, N2}}
 
 ArrayOperator{B}(rep::AbstractArray) where B<:ConcreteBasis =
     ArrayOperator{B, eltype(rep), typeof(rep)}(rep)
@@ -344,9 +345,19 @@ function Base.show(io::IO, mime::MIME"text/plain", x::ArrayOperator)
     show(io, mime, x.rep)
 end
 
+Base.:(==)(a::ArrayOperator{B}, b::ArrayOperator{B}) where B<:ConcreteBasis = a.rep == b.rep
+
+Base.copy(a::ArrayOperator) = typeof(a)(a.rep)
+
 Base.zero(O::Type{<:ActionOperator}) = O(a -> States.Zero())
 Base.zero(O::Type{<:FunctionOperator}) = O((a, b) -> zero(eltype(O)))
-Base.zero(O::Type{<:ArrayOperator}) = O(zero(similar(reptype(O), innerdims(basistype(O)))))
+function Base.zero(O::Type{<:ArrayOperator})
+    A = reptype(O)
+    B = basistype(O)
+    ds = innerdims(B)
+
+    O(zero(similar(A, ds..., ds...)))
+end
 ### No sensible zero for RLOp...
 ## And this is but vaguely sensible, and so shall be omitted
 #Base.zero(O::RaiseLowerOp) = O*O

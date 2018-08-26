@@ -10,8 +10,9 @@ abstract type AbstractState end
 basistype(x) = basistype(typeof(x))
 @disallow basistype(::Type)
 
-reptype(x) = reptype(typeof(x))
-@disallow reptype(::Type)
+#reptype(x) = reptype(typeof(x))
+#@disallow reptype(::Type)
+reptype() = nothing
 
 include("SpinMod.jl")
 include("Bases/main.jl")
