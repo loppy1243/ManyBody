@@ -7,10 +7,23 @@
 - [IDEA] Move `dim()`, `rank()` up to `ManyBody`?
 - [IDEA] Define within a given module only that which belongs to the module, and define
   interactions or outside methods within the greater module.
+- Get `==` working properly between all the different types of Bases and States.
 
 # Operators
 - Factor into multiple files
-- Allow `AbstractOperator{N}`s to act on `Product{N}`s
+x [IGNORE] Allow `AbstractOperator{N}`s to act on `Product{N}`s
+- Redefine
+  ```
+      abstract type AbstractOperator{BL<:ConcreteBasis, BR<:ConcreteBasis} end
+  ```
+  to allow to operators that connect bases, i.e.
+  ```
+      struct ProjectorOperator{BL<:ConcreteBasis, BR<:ConcreteBasis} <: AbstractBasis{BL, BR}
+          selector::BL
+          projector::BR
+      end
+        
+  ```
 
 # States
 x Interface with Bases

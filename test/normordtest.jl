@@ -8,23 +8,17 @@ function normordtest()
     a = A(p', r, s', q')
 
     @testset "Vacuum" begin
-        sgn, Na = normord(a)
-        @debug("Testing normord wrt. Vacuum",
-               input   = (1, a),
-               want    = (1, A(s', q', p', r)),
-               normord = (sgn, Na))
-        @test Na == A(s', q', p', r)
-        @test sgn == 1
+        @debug "Testing normord wrt. Vacuum"
+
+        Na = normord(a)
+        @test tabulate(Na).rep == tabulate(A(s', q', p', r)).rep
     end
 
     @testset "Fermi{2}" begin
-        sgn, Na = normord(RefStates.Fermi(SPBASIS, 2), a)
-        @debug("Testing normord wrt. Fermi{2}",
-               input   = (1, a),
-               want    = (-1, A(s', p', q', r)),
-               normord = (sgn, Na))
-        @test Na == A(s', p', q', r)
-        @test sgn == -1
+        @debug "Testing normord wrt. Fermi{2}",
+
+        Na = normord(RefStates.Fermi(SPBASIS, 2), a)
+        @test tabulate(Na).rep == tabulate(A(s', p', q', r)).rep
     end
 end; nothing end
 normordtest()

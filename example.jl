@@ -1,6 +1,20 @@
-module Exec
+macro reload(expr)
+    quote
+        try
+            Base._require(Base.PkgId($(esc(expr))))
+        catch ex
+            if ex isa UndefVarError
+                @info $(string(expr))*" is not currently defined"
+            else
+                rethrow()
+            end
+        end
+    end
+end
 
-#include("src/ManyBody.jl")
+@reload Exec.ManyBody
+
+module Exec
 
 using ManyBody
 using ManyBody.Operators: A

@@ -7,28 +7,27 @@ function rlapply()
                                 (SPINUP, SPINDOWN, SPINUP, SPINUP, SPINDOWN, SPINDOWN))
 
     @testset "One Body" begin for X in MBBASIS
-#        X2 = convert(Bases.Slater, X)
-        @test A(p, p)(X) == ZeroState()
-        @test A(q, q)(X) == ZeroState()
-        @test A(p', p')(X) == ZeroState()
-        @test A(q', q')(X) == ZeroState()
-        @test A(p', p)(X) == (p in X) * (p in X ? X : ZeroState())
-        @test A(q', q)(X) == (q in X) * (q in X ? X : ZeroState())
-        @test A(p, p')(X) == (1 - (p in X)) * (p in X ? ZeroState() : X)
-        @test A(q, q')(X) == (1 - (q in X)) * (q in X ? ZeroState() : X)
+        @test A(p, p)(X) == States.Zero()
+        @test A(q, q)(X) == States.Zero()
+        @test A(p', p')(X) == States.Zero()
+        @test A(q', q')(X) == States.Zero()
+        @test A(p', p)(X) == (p in X) * X
+        @test A(q', q)(X) == (q in X) * X
+        @test A(p, p')(X) == (1 - (p in X)) * X
+        @test A(q, q')(X) == (1 - (q in X)) * X
 
         if p != q && !(p in X) || !(q in X)
-            @test A(p, q)(X) == ZeroState()
-            @test A(q, p)(X) == ZeroState()
+            @test A(p, q)(X) == States.Zero()
+            @test A(q, p)(X) == States.Zero()
         end
         if p != q && p in X || q in X
-            @test A(p', q')(X) == ZeroState()
-            @test A(q', p')(X) == ZeroState()
+            @test A(p', q')(X) == States.Zero()
+            @test A(q', p')(X) == States.Zero()
         end
     end end
 
     @testset "Two Body" begin
-        @test A(p, q, r, s)(MBBASIS[1]) == ZeroState()
+        @test A(p, q, r, s)(MBBASIS[1]) == States.Zero()
         X = Bases.Slater(SPBASIS.((1, 2, 3, 3),
                                   (SPINDOWN, SPINDOWN, SPINDOWN, SPINUP)))
         @test A(p, q', r, s')(MBBASIS[1]) == -X

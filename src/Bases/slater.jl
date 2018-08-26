@@ -28,7 +28,9 @@ IndexType(::Type{<:Slater}) = IndexTypes.Linear()
 Base.:(==)(s1::B, s2::B) where B<:Slater = s1.bits == s2.bits
 
 Base.in(p::MaybeIndex{B}, s::Slater{B}) where B<:ConcreteBasis = s.bits[index(p)]
-Base.in(p::Rep, s::Rep) = inner(p) in inner(s)
+Base.in(p::Wrapped, s::Wrapped) = inner(p) in inner(s)
+Base.in(p::Wrapped, s::Slater) = inner(p) in s
+Base.in(p::Rep, s::Wrapped) = p in inner(s)
 
 innertype(::Type{Slater{B}}) where B<:ConcreteBasis = B
 function inner(s::Slater)
