@@ -2,7 +2,7 @@
 export AbstractOperator, ActionOperator, CF64ActionOperator, F64ActionOperator,
        FunctionOperator, CF64FunctionOperator, F64FunctionOperator, ArrayOperator,
        CF64ArrayOperator, F64ArrayOperator, tabulate, refop, RaiseOp, LowerOp, RaiseLowerOp,
-       refop, normord
+       refop, normord, matrixiter
 using ..ManyBody
 using Base.Cartesian
 using ..@commutes, ..@disallow
@@ -133,7 +133,7 @@ function matrixelem(op::AbstractOperator, argl::AbstractBasis, argr::AbstractBas
 end
 
 ### I don't think we want these, as index notation should be reserved for the actual matrix
-### elementents, and off-basis matrix elements should go through the action notation.
+### elements, and off-basis matrix elements should go through the action notation.
 
 #matrixelem(op::AbstractOperator, argl, argr) = matrixelem(op, promote(argl, argr)...)
 
@@ -157,6 +157,8 @@ end
 #        matrixelem(op, L, R)*(argl'L)*(R'argr)
 #    end
 #end
+
+matrixiter(op::AbstractOperator) = cartesian_pow(basistype(op), Val{2})
 
 tabulate(op) = tabulate(Array{eltype(op)}, op)
 tabulate(A::Type{<:AbstractArray}, op::ArrayOperator) =
