@@ -127,6 +127,25 @@ function matrixelem(op::AbstractOperator, args...)
     N = rank(op)
     matrixelem(op, prod(args[1:N]), prod(args[N+1:end]))
 end
+@generated function matrixelem(op::AbstractOperator, args::Union{Int, Base.CartesianIndex}...)
+    N = rank(op)
+    B = basistype(op)
+    BI = indextype(B)
+
+    exprs = map(enumerate(args)) do X
+        i, T = X
+        if T <: Int
+            :(args[$i])
+        else
+            Expr(:..., :(Tuple(args[$i])))
+        end
+    end
+    tuple_expr = :(($(exprs...),))
+    quote
+        x = $tuple_expr
+        matrixelem(op, $BI(x[1:$N]), $BI(x[$N+1:end]))
+    end
+end
 function matrixelem(op::AbstractOperator, argl::AbstractBasis, argr::AbstractBasis)
     B = basistype(op)
     matrixelem(op, convert(B, argl), convert(B, argr))
@@ -191,9 +210,10 @@ const RLOp{SP<:ConcreteBasis} = Union{RaiseOp{SP}, LowerOp{SP}}
 struct RaiseLowerOp{SP<:ConcreteBasis} <: AbstractOperator{Bases.Slater{SP}, Int}
     rlops::Vector{RLOp{SP}}
 
-    RaiseLowerOp{SP}(itr) where SP<:ConcreteBasis = new(collect(itr))
+    RaiseLowerOp{SP}(rlops::Vector{RLOp{SP}}) where SP<:ConcreteBasis = new(rlops)
 end
-RaiseLowerOp(rlops::RLOp{SP}...) where SP<:ConcreteBasis = RaiseLowerOp{SP}(collect(rlops))
+RaiseLowerOp{SP}(itr) where SP<:ConcreteBasis = RaiseLowerOp(collect(RLOp{SP}, itr))
+RaiseLowerOp(rlops::Vector{RLOp{SP}}) where SP<:ConcreteBasis = RaiseLowerOp{SP}(rlops)
 
 const AnyRLOp{SP<:ConcreteBasis} = Union{RaiseLowerOp{SP}, RaiseOp{SP}, LowerOp{SP}}
 
@@ -262,7 +282,7 @@ A(p::Raised{<:ConcreteBasis}) = RaiseOp(p.val)
         end
     end
 
-    :(RaiseLowerOp{B}([$(args...)]))
+    :(RaiseLowerOp{B}(RLOp{B}[$(args...)]))
 end
 
 refop(s::Bases.Wrapped) = refop(inner(s))
@@ -273,7 +293,7 @@ function refop(R::RefState{B}, s::Bases.Slater{B}) where B<:ConcreteBasis
                     if isocc(R, BI[I]) && ~s.bits[I] || ~isocc(R, BI[I]) && s.bits[I])
 end
 
-normord(a::RaiseLowerOp) = normord(RefStates.Vacuum(basistype(B)), a)
+normord(a::RaiseLowerOp) = normord(RefStates.Vacuum(basistype(a)), a)
 function normord(R::RefState{B}, a::RaiseLowerOp{B}) where B<:ConcreteBasis
     function comp(a, b)
         if a[2] && b[2]
@@ -285,7 +305,7 @@ function normord(R::RefState{B}, a::RaiseLowerOp{B}) where B<:ConcreteBasis
         end
     end
 
-    xs = map(a.ops) do b
+    xs = map(a.rlops) do b
         (b.state, if b isa RaiseOp
             ~isocc(R, b.state)
         else
@@ -296,10 +316,10 @@ function normord(R::RefState{B}, a::RaiseLowerOp{B}) where B<:ConcreteBasis
     p = sortperm(xs, lt=comp)
     sgn = levicivita(p)
 
-    ret = RaiseLowerOp(a.ops[p])
-    if p > 0
+    ret = RaiseLowerOp{B}(a.rlops[p])
+    if sgn > 0
         ret
-    elseif p < 0
+    elseif sgn < 0
 #        ActionOperator{Bases.Slater{B}, Int}(x -> -ret(x))
         -ret
     else

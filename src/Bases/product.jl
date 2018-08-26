@@ -45,9 +45,10 @@ innertypes(::Type{Product{N, BS}}) where {N, BS<:NTuple{N, AbstractBasis}} =
     Tuple(BS.parameters)
 
 index(b::Product) = Base.CartesianIndex(map(index, b.states))
-indexbasis(P::Type{<:Product{N}}, ixs::CartesianIndex{N}) where N = indexbasis(P, Tuple(ixs))
-indexbasis(P::Type{<:Product{N}}, ixs::NTuple{N, Int}) where N = Product(map(index, ixs))
+indexbasis(P::Type{<:Product{N}}, ixs::Base.CartesianIndex{N}) where N = indexbasis(P, Tuple(ixs))
 indexbasis(P::Type{<:Product{N}}, ixs::Vararg{Int, N}) where N = indexbasis(P, ixs)
+indexbasis(P::Type{<:Product{N}}, ixs::NTuple{N, Int}) where N =
+    P(map(indexbasis, innertypes(P), ixs))
 
 innerdims(B::Type{<:Product}) = map(dim, innertypes(B))
 dim(B::Type{<:Product}) = prod(innerdims(B))
@@ -57,6 +58,14 @@ Base.:(==)(a::B, b::B) where B<:Product = a.states == b.states
 
 Base.getindex(b::Product, i::Int) = b.states[i]
 Base.getindex(b::Product, ixs::AbstractArray) = map(i -> b.states[i], ixs)
+
+Base.iterate(b::Product) = iterate(b.states)
+Base.iterate(b::Product, st) = iterate(b.states, st)
+Base.IteratorSize(B::Type{<:Product}) = Base.HasLength()
+Base.length(b::Product) = rank(b)
+
+#Base.convert(::Type{P}, p::P) where P<:Product = p
+#Base.convert(::Type{P}, p::P) where P<:Product{1} = p
 
 function Base.promote_rule(P1::Type{<:Product{N}}, P2::Type{<:Product{N}}) where N
     tys = map(promote_type, innertypes(P1), innertypes(P2))

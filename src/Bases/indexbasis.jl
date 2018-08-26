@@ -1,4 +1,5 @@
 export indextype, rank
+using ..@disallow
 
 module IndexTypes
     export IndexType
@@ -11,8 +12,13 @@ module IndexTypes
     rank(::Cartesian{N}) where N = N
 end
 using .IndexTypes
+
+rank(b) = rank(typeof(b))
+@disallow rank(::Type)
 rank(B::Type{<:ConcreteBasis}) = IndexTypes.rank(IndexType(B))
-rank(b::ConcreteBasis) = rank(typeof(b))
+
+indextype(b) = indextype(typeof(b))
+@disallow indextype(::Type)
 indextype(B::Type{<:ConcreteBasis}) = indextype(B, IndexType(B))
 indextype(B::Type{<:ConcreteBasis}, ::IndexTypes.Linear) = LinearIndex{B}
 indextype(B::Type{<:ConcreteBasis}, ::IndexTypes.Cartesian) = CartesianIndex{B, rank(B)}
@@ -23,15 +29,16 @@ struct LinearIndex{B<:ConcreteBasis} <: AbstractIndex{B}
     LinearIndex{B}(index::Int, ::IndexTypes.Linear) where B<:ConcreteBasis = new(index)
 end
 LinearIndex{B}(index::Int) where B<:ConcreteBasis = LinearIndex{B}(index, IndexType(B))
+LinearIndex{B}(index::Tuple{Int}) where B<:ConcreteBasis =
+    LinearIndex{B}(index[1], IndexType(B))
 
 struct CartesianIndex{B<:ConcreteBasis, N} <: AbstractIndex{B}
-    index::CartesianIndex{N}
+    index::Base.CartesianIndex{N}
 
-    CartesianIndex{B, N}(index, ::IndexTypes.Cartesian{N}) where
-                        {N, B<:ConcreteBasis} =
+    CartesianIndex{B, N}(index, ::IndexTypes.Cartesian{N}) where {B<:ConcreteBasis, N} =
         new(index)
 end
-CartesianIndex{B, N}(index) where {N, B<:ConcreteBasis} =
+CartesianIndex{B, N}(index) where {B<:ConcreteBasis, N} =
     CartesianIndex{B, N}(index, IndexType(B))
 CartesianIndex{B}(index) where B<:ConcreteBasis = CartesianIndex{B, length(index)}(index)
 CartesianIndex{B}(indices::Int...) where B<:ConcreteBasis =
@@ -63,3 +70,12 @@ Base.convert(::Type{LinearIndex{B}}, b::B) where B<:ConcreteBasis = LinearIndex{
 Base.convert(::Type{<:CartesianIndex{B}}, b::B) where B<:ConcreteBasis =
     CartesianIndex{B}(index(b))
 #Base.convert(::Type{LinearIndex{B}}, b::LinearIndex{B}) where B<:ConcreteBasis = b 
+
+## These methods seems to be missing from Base.
+## Causes StackOverflowError?
+#Base.convert(::Type{<:Base.CartesianIndex{1}}, x::Integer) = Base.CartesianIndex(x)
+#Base.convert(::Type{<:Base.CartesianIndex{N}}, x::NTuple{N, Integer}) where N =
+#    Base.CartesianIndex(x)
+
+#Base.convert(I::Type{<:LinearIndex}, x) = I(convert(Int, x))
+#Base.convert(I::Type{<:CartesianIndex}, x) = I(convert(Base.CartesianIndex, x))

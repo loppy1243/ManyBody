@@ -1,6 +1,6 @@
 export RefStates, RefState, Vacuum, Fermi, parts, holes, nparts, pindex, hindex, occ, unocc,
        n_occ, n_unocc, isocc, isunocc, ishole, ispart, nholes, nparts, fermilevel
-import ..ManyBody
+using ..ManyBody
 
 abstract type RefState{B<:ConcreteBasis} end
 
@@ -26,7 +26,7 @@ const unocc = parts
 
 #holes(v::RefStates.Vacuum) = basistype(v)[]
 holes(::RefStates.Vacuum) = ()
-holes(f::RefStates.Fermi) = [p for p in SP if level(p) <= fermilevel(f)]
+holes(f::RefStates.Fermi) = [p for p in basistype(f) if level(p) <= fermilevel(f)]
 const occ = holes
 
 nparts(r::RefState) = length(parts(r))

@@ -9,7 +9,7 @@ function Base.eachindex(B::Type{<:ConcreteBasis})
     _eachindex(IndexType(B))
 end
 
-Base.firstindex(B::Type{<:ConcreteBasis}) = first(eachindex(B))
+Base.firstindex(B::Type{<:AbstractBasis}) = first(eachindex(B))
 Base.lastindex(B::Type{<:AbstractBasis}) = last(eachindex(B))
 
 function Base.iterate(B::Type{<:AbstractBasis})
@@ -24,8 +24,9 @@ function Base.iterate(B::Type{<:AbstractBasis}, st)
 
     (B[ix_iter_ret[1]], (ix_iter, ix_iter_ret[2]))
 end
-Base.IteratorSize(B::Type{<:AbstractBasis}) = Base.HasLength()
-Base.IteratorEltype(B::Type{<:AbstractBasis}) = Base.HasEltype()
+
+Base.IteratorSize(::Type{<:Type{<:AbstractBasis}}) = Base.HasLength()
+Base.IteratorEltype(::Type{<:Type{<:AbstractBasis}}) = Base.HasEltype()
 
 Base.length(B::Type{<:AbstractBasis}) = dim(B)
 Base.eltype(B::Type{<:AbstractBasis}) = B

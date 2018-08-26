@@ -17,7 +17,7 @@ innerdims(B::Type{<:AbstractBasis}) = (dim(B),)
 
 inner(x::AbstractBasis) = x
 
-Base.convert(B1::Type{<:ConcreteBasis}, b2::Wrapped) = Base.convert(B1, inner(b2))
+#Base.convert(B1::Type{<:ConcreteBasis}, b2::Wrapped) = Base.convert(B1, inner(b2))
 
 widen(::Type{B}, b::B) where B<:ConcreteBasis = b
 widen(B::Type{<:ConcreteBasis}, sb::Sub) = Bases.widen(B, inner(sb))

@@ -13,17 +13,18 @@
 - Factor into multiple files
 x [IGNORE] Allow `AbstractOperator{N}`s to act on `Product{N}`s
 - Redefine
-  ```
+  ````
       abstract type AbstractOperator{BL<:ConcreteBasis, BR<:ConcreteBasis} end
-  ```
+  ````
   to allow to operators that connect bases, i.e.
-  ```
+  ````
       struct ProjectorOperator{BL<:ConcreteBasis, BR<:ConcreteBasis} <: AbstractBasis{BL, BR}
           selector::BL
           projector::BR
       end
         
-  ```
+  ````
+- [IDEA] `NegOperator{}`?
 
 # States
 x Interface with Bases
@@ -36,15 +37,15 @@ x [IGNORE] Add conversion between `ArrayState{}`s of differing `Product{}`s
 
 # Bases
 - Is there a way to let
-  ```
+  ````
   abstract type Rep{B<:AbstractBasis} end
-  ```
+  ````
 that works with Product{1}?
-x Add promote_rule between `Product{}`s of `Rep{}`s
+x Add `promote_rule` between `Product{}`s of `Rep{}`s
 x Make distinction between `SimpleBasis{}` and `ComplexBasis{}`
   - [NOTE] See below item for actual scheme implemented
 x At least conceptually, this is what we want:
-  ```
+  ````
   abstract type AbstractBasis end
   abstract type ConcreteBasis <: AbstractBasis end
   abstract type LeafBasis <: AbstractBasis end
@@ -68,7 +69,7 @@ x At least conceptually, this is what we want:
   ## Enforce invariants in inner constructors
   struct ArrayState{B<:Bases.AbstractIndex, A<:AbstractArray} <: Mixed{B} end
   const VectorState
-  ```
+  ````
 x Create two index types: `LinearIndex` and `CartesianIndex`, similar to what is in `Base`.
 x Add way to select `IndexType(::Type{<:Sub})` in `@defSub`
   - Define `innerdims()`
