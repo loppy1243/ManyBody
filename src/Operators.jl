@@ -117,8 +117,12 @@ Base.getindex(op::AbstractOperator, args...) = matrixelem(op, args...)
 ## Subsumes ActionOperator{} method
 matrixelem(op::AbstractOperator{B}, argl::B, argr::B) where B<:ConcreteBasis =
     convert(eltype(op), argl'op(argr))
+
 matrixelem(op::FunctionOperator{B}, argl::B, argr::B) where B<:ConcreteBasis =
     convert(eltype(op), op.rep(argl, argr))
+
+matrixelem(op::ArrayOperator{B}, argl::B, argr::B) where B<:ConcreteBasis =
+    op.rep[index(argl), index(argr)]
 matrixelem(op::ArrayOperator{B}, argl::Bases.MaybeIndex{B}, argr::Bases.MaybeIndex{B}) where
           B<:ConcreteBasis =
     op.rep[index(argl), index(argr)]
