@@ -95,24 +95,27 @@ Base.convert(::Type{B}, b::Product{1, Tuple{B}}) where B<:ConcreteBasis = inner(
 #end
 @generated function Base.:*(bs::AbstractBasis...)
     c = 0
-    exprs = map(enumerate(bs)) do X
+    tys, exprs = map(enumerate(bs)) do X
         i, b = X
         if b <: Product
-            [:(bs[$i].states[$j]) for j = 1:rank(b)]
+            ([innertypes(b)...], [:(bs[$i].states[$j]) for j = 1:rank(b)])
         elseif b <: Neg{<:Product}
             c += 1
-            [:(inner(bs[$i]).states[$j]) for j = 1:rank(innertype(b))]
+            ([innertypes(innertype(b))...],
+             [:(inner(bs[$i]).states[$j]) for j = 1:rank(innertype(b))])
         elseif b <: Neg
             c += 1
-            [:(inner(bs[$i]))]
+            ([innertype(b)], [:(inner(bs[$i]))])
         elseif b <: LeafBasis
-            [:(inner(bs[$i]))]
+            ([innertype(b)], [:(inner(bs[$i]))])
         else
-            [:(bs[$i])]
+            ([b], [:(bs[$i])])
         end
-    end |> x -> reduce(vcat, x)
+    end |> x -> zip(x...)
+    tys = reduce(vcat, tys)
+    exprs = reduce(vcat, exprs)
 
-    prod_expr = :(Product{$(length(bs)), $bs}(($(exprs...),)))
+    prod_expr = :(Product{$(length(bs)), Tuple{$(tys...)}}(($(exprs...),)))
     if iseven(c)
         prod_expr
     else

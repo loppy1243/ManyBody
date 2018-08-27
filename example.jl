@@ -1,4 +1,4 @@
-macro reload(expr)
+macro try_reload(expr)
     quote
         try
             Base._require(Base.PkgId($(esc(expr))))
@@ -12,7 +12,7 @@ macro reload(expr)
     end
 end
 
-@reload Exec.ManyBody
+@try_reload Exec.ManyBody
 
 module Exec
 
