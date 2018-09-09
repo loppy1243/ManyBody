@@ -111,7 +111,8 @@ function applyop(op::AbstractOperator, arg::ArrayState)
 end
 
 ### Definition
-Base.getindex(op::AbstractOperator, args...) = matrixelem(op, args...)
+@generated Base.getindex(op::AbstractOperator, args...) =
+    :(@ncall(matrixelem, $(length(args)), op, args...))
 
 ### Kernels
 ## Subsumes ActionOperator{} method
