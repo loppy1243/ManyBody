@@ -33,7 +33,8 @@ struct Product{N, BS<:NTuple{N, ConcreteBasis}} <: ConcreteBasis
         new(states)
     end
 end
-Product(args::ConcreteBasis...) = Product{length(args), typeof(args)}(args)
+Product(args::Tuple) = Product{length(args), typeof(args)}(args)
+Product(args::ConcreteBasis...) = Product(args)
 
 IndexType(::Type{<:Product{N}}) where N = IndexTypes.Cartesian{N}()
 rank(::Type{<:Product{N}}) where N = N
