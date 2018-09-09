@@ -112,7 +112,7 @@ end
 
 ### Definition
 @generated Base.getindex(op::AbstractOperator, args...) =
-    :(@ncall($(length(args)), matrixelem, op, args...))
+    :(@ncall($(length(args)), matrixelem, op, i -> args[i]))
 
 ### Kernels
 ## Subsumes ActionOperator{} method
