@@ -130,7 +130,7 @@ matrixelem(op::ArrayOperator{B}, argl::Bases.MaybeIndex{B}, argr::Bases.MaybeInd
 ### Dispatch
 function matrixelem(op::AbstractOperator, args...)  
     N = rank(op)
-    matrixelem(op, prod(args[1:N]), prod(args[N+1:end]))
+    matrixelem(op, Bases.Product(args[1:N]), Bases.Product(args[N+1:end]))
 end
 @generated function matrixelem(op::AbstractOperator, args::Union{Int, Base.CartesianIndex}...)
     N = rank(op)
