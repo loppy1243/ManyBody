@@ -2,12 +2,9 @@ Base.getindex(B::Type{<:AbstractBasis}, ixs...) = indexbasis(B, ixs...)
 Base.getindex(B::Type{<:AbstractBasis}, ixs::AbstractArray) =
    map(i -> indexbasis(B, i), ixs)
 
-function Base.eachindex(B::Type{<:ConcreteBasis})
-    _eachindex(::IndexTypes.Linear) = 1:dim(B)
-    _eachindex(::IndexTypes.Cartesian) = Base.CartesianIndices(innerdims(B))
-
-    _eachindex(IndexType(B))
-end
+Base.eachindex(B::Type{<:ConcreteBasis}) = _eachindex(B, IndexType(B))
+_eachindex(B, ::IndexTypes.Linear) = 1:dim(B)
+_eachindex(B, ::IndexTypes.Cartesian) = Base.CartesianIndices(innerdims(B))
 
 Base.firstindex(B::Type{<:AbstractBasis}) = first(eachindex(B))
 Base.lastindex(B::Type{<:AbstractBasis}) = last(eachindex(B))

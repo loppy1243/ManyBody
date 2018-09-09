@@ -129,7 +129,7 @@ matrixelem(op::ArrayOperator{B}, argl::Bases.MaybeIndex{B}, argr::Bases.MaybeInd
     op.rep[index(argl), index(argr)]
 
 ### Dispatch
-function matrixelem(op::AbstractOperator, args...)  
+function matrixelem(op::AbstractOperator{<:Any, T}, args...)::T where T
     N = rank(op)
     matrixelem(op, Bases.Product(args[1:N]), Bases.Product(args[N+1:end]))
 end
