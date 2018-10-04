@@ -40,7 +40,8 @@ nholes(f::RefStates.Fermi{<:Pairing}) = 2fermilevel(f)
 const n_occ = nholes
 
 isocc(r::RefState, s::Wrapped) = isocc(r, inner(s))
-isocc(r::RefState, s::Product) = all(x -> isocc(r, x), s)
+# This is just unclear, so probably better to just write explicitly.
+#isocc(r::RefState, s::Product) = all(x -> isocc(r, x), s)
 isocc(r::RefState{B}, s::B) where B<:ConcreteBasis = s in holes(r)
 isocc(v::RefStates.Vacuum, s) = false
 isocc(f::RefStates.Fermi{B}, s::B) where B<:Pairing = level(s) <= fermilevel(f)
@@ -48,6 +49,7 @@ isocc(f::RefStates.Fermi{B}, s::AbstractIndex{B}) where B<:Pairing = index(s) <=
 const ishole = isocc
 
 isunocc(r::RefState, s::Wrapped) = isunocc(r, inner(s))
-isunocc(r::RefState, s::Product) = all(x -> ~isocc(r, x), s)
+# This is just unclear, so probably better to just write explicitly.
+#isunocc(r::RefState, s::Product) = all(x -> ~isocc(r, x), s)
 isunocc(r, s) = ~isocc(r, s)
 const ispart = isunocc
