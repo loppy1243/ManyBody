@@ -1,5 +1,5 @@
 export indextype, rank
-using ..@disallow
+using ..ManyBody: @disallow
 
 module IndexTypes
     export IndexType

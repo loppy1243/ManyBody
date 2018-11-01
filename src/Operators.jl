@@ -2,10 +2,10 @@
 export AbstractOperator, ActionOperator, CF64ActionOperator, F64ActionOperator,
        FunctionOperator, CF64FunctionOperator, F64FunctionOperator, ArrayOperator,
        CF64ArrayOperator, F64ArrayOperator, tabulate, refop, RaiseOp, LowerOp, RaiseLowerOp,
-       refop, normord, matrixiter
+       refop, normord, matrixiter, applyop!
 using ..ManyBody
 using Base.Cartesian
-using ..@commutes, ..@disallow
+using ..ManyBody: @commutes, @disallow
 using Combinatorics: levicivita
 using JuliaUtil: cartesian_pow
 
@@ -85,6 +85,8 @@ applyop(op::ArrayOperator{B}, arg::Bases.MaybeIndex{B}) where B<:ConcreteBasis =
     end
 
 ### Dispatch
+## Default to not mutating.
+applyop!(op, arg) = applyop(op, arg)
 applyop(op::AbstractOperator, arg) = applyop(op, convert(basistype(op), arg))
 applyop!(op::AbstractOperator, arg::Bases.Neg) = -applyop!(op, inner(arg))
 applyop(op::AbstractOperator, arg::Bases.Neg) = -applyop(op, inner(arg))

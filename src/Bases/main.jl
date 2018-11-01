@@ -2,7 +2,7 @@
 export AbstractBasis, ConcreteBasis, LeafBasis, RefStates, RefState
 
 import ..ManyBody
-using ..AbstractState
+using ..ManyBody: AbstractState
 using Base.Cartesian: @ncall
 using LinearAlgebra: Adjoint
 using Combinatorics: combinations

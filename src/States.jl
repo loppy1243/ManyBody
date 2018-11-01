@@ -2,7 +2,7 @@
 export ArrayState, F64ArrayState, CF64ArrayState, overlap
 import ..ManyBody
 using ..Bases
-using ..AbstractState, ..@commutes
+using ..ManyBody: AbstractState, @commutes
 
 abstract type Mixed{B<:ConcreteBasis, T} <: AbstractState end
 
