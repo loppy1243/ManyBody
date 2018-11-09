@@ -25,10 +25,14 @@ dim(B::Type{<:TensorBasis}) = prod(fulldims(B))
 Base.:(==)(x::B, y::B) where B<:TensorBasis = index(x) == index(y)
 
 include("iter.jl")
+include("pairing.jl")
+
+### Update Line
+##############################################################################################
+
 include("subbasis.jl")
 include("product.jl")
 include("interface.jl")
-include("pairing.jl")
 include("refstates.jl")
 include("slater.jl")
 

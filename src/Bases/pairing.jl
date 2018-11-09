@@ -1,45 +1,28 @@
-export Pairing, level, nlevels, spin, flipspin
-import .RefStates
+export Pairing, nlevels, flipspin
+#import .RefStates
 using ..SpinMod
 
-struct Pairing{Levels} <: ConcreteBasis
+SpinMod.spinup(sp::Pairing) = spinup(sp.spin)
+
+struct Pairing{Levels} <: TensorBasis{2}
     level::Int
     spin::Spin
 
-    function Pairing{Levels}(l::Int, s::Spin) where Levels
-        @assert l <= Levels
+    function Pairing{L}(l::Int, s::Spin) where L
+        @assert l <= L
         new(l, s)
     end
 end
-IndexType(::Type{<:Pairing}) = IndexTypes.Linear()
 
-flipspin(p::Pairing) = typeof(p)(level(p), flip(spin(p)))
-flipspin(p::Wrapped) = convert(typeof(p), flipspin(inner(p)))
+fulldims(B::Type{<:Pairing}) = (nlevels(B), 2)
+index(sp::Pairing) = CartesianIndex(p.level, 1+Bool(p.spin))
+indexbasis(B::Type{<:Pairing}, level::Int, snum::Int) =
+    B(level, Spin(Bool(snum-1)))
 
-Base.:(==)(p1::Pairing{L}, p2::Pairing{L}) where L =
-    p1.level == p2.level && p1.spin == p2.spin
+flipspin(p::Pairing) = typeof(p)(p.level, flip(p.spin))
 
-index(sp::Pairing) = 2(sp.level-1) + 1 + Bool(sp.spin)
-
-function indexbasis(B::Type{<:Pairing}, pn::Int) where L
-    s_num = Bool(1 - pn % 2)
-    l = div(pn - s_num - 1, 2) + 1
-    B(l, Spin(s_num))
-end
-
-nlevels(a::AbstractBasis) = nlevels(typeof(a))
+nlevels(a::TensorBasis) = nlevels(typeof(a))
 nlevels(::Type{Pairing{L}}) where L = L
-nlevels(B::Type{<:Wrapped}) = nlevels(innertype(B))
-
-level(sp::Pairing) = sp.level
-level(sp::Wrapped) = level(inner(sp))
-
-spin(sp::Pairing) = sp.spin
-spin(sp::Wrapped) = spin(inner(sp))
-
-SpinMod.spinup(sp) = spinup(spin(sp))
-
-dim(B::Type{<:Pairing}) = 2nlevels(B)
 
 Base.show(io::IO, x::Pairing) = print(io, level(x), spinup(spin(x)) ? "↑" : "↓")
 function Base.show(io::IO, ::MIME"text/plain", x::Pairing)
