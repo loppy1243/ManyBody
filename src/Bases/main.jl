@@ -1,5 +1,5 @@
 @reexport module Bases
-export AbstractBasis, ConcreteBasis, LeafBasis, RefStates, RefState
+#export AbstractBasis, ConcreteBasis, LeafBasis, RefStates, RefState
 
 import ..ManyBody
 using ..ManyBody: AbstractState
@@ -8,20 +8,26 @@ using LinearAlgebra: Adjoint
 using Combinatorics: combinations
 using Reexport: @reexport
 
-abstract type AbstractBasis <: AbstractState end
-abstract type ConcreteBasis <: AbstractBasis end
-abstract type LeafBasis <: AbstractBasis end
-abstract type AbstractIndex{B<:ConcreteBasis} <: LeafBasis end
-const MaybeIndex{B<:ConcreteBasis} = Union{B, AbstractIndex{B}}
+#abstract type AbstractBasis <: AbstractState end
+#abstract type ConcreteBasis <: AbstractBasis end
+#abstract type LeafBasis <: AbstractBasis end
+#abstract type AbstractIndex{B<:ConcreteBasis} <: LeafBasis end
+#const MaybeIndex{B<:ConcreteBasis} = Union{B, AbstractIndex{B}}
 
-ManyBody.basistype(x::AbstractBasis) = basistype(typeof(x))
-ManyBody.basistype(B::Type{<:AbstractBasis}) = B
+abstract type TensorBasis{Rank} end
+const Basis = TensorBasis{1}
 
-include("indexbasis.jl")
+rank(::Type{<:TensorBasis{N}}) where N = N
+dim(B::Type{<:TensorBasis}) = prod(fulldims(B))
+# Good way to do this?
+#fulldims(B::Type{<:Basis}) = (dim(B),)
+
+Base.:(==)(x::B, y::B) where B<:TensorBasis = index(x) == index(y)
+
+include("iter.jl")
 include("subbasis.jl")
 include("product.jl")
 include("interface.jl")
-include("iter.jl")
 include("pairing.jl")
 include("refstates.jl")
 include("slater.jl")
