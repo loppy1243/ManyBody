@@ -1,29 +1,20 @@
-Base.getindex(B::Type{<:AbstractBasis}, ixs...) = indexbasis(B, ixs...)
-Base.getindex(B::Type{<:AbstractBasis}, ixs::AbstractArray) =
-   map(i -> indexbasis(B, i), ixs)
+Base.getindex(B::Type{<:TensorBasis}, ixs...) = indexbasis(B, ixs...)
+Base.to_index(b::TensorBasis) = index(b)
 
-Base.eachindex(B::Type{<:ConcreteBasis}) = _eachindex(B, IndexType(B))
-_eachindex(B, ::IndexTypes.Linear) = 1:dim(B)
-_eachindex(B, ::IndexTypes.Cartesian) = Base.CartesianIndices(innerdims(B))
+Base.eachindex(B::Type{<:TensorBasis}) = CartesianIndices(axes(B))
+Base.firstindex(B::Type{<:TensorBasis}) = CartesianIndex(ones(rank(B))...)
+Base.lastindex(B::Type{<:TensorBasis}) = CartesianIndex(fulldims(B))
 
-Base.firstindex(B::Type{<:AbstractBasis}) = first(eachindex(B))
-Base.lastindex(B::Type{<:AbstractBasis}) = last(eachindex(B))
+Base.IteratorSize(::Type{B}) where B<:Type{<:TensorBasis} = Base.HasShape{rank(B)}()
+Base.axes(B::Type{<:TensorBasis}) = map(d -> 1:d, fulldims(B))
+Base.length(B::Type{<:TensorBasis}) = prod(fulldims(B))
 
-function Base.iterate(B::Type{<:AbstractBasis})
-    ix_iter = eachindex(B)
-    (ix_iter_ret = iterate(ix_iter)) === nothing && return nothing
+Base.IteratorEltype(::Type{<:Type{<:TensorBasis}}) = Base.HasEltype()
+Base.eltype(B::Type{<:TensorBasis}) = B
 
-    (B[ix_iter_ret[1]], (ix_iter, ix_iter_ret[2]))
+function Base.iterate(B::Type{<:TensorBasis}, st=(eachindex(B),))
+    (x = iterate(st...)) === nothing && return nothing
+    (I, inner_st) = x
+
+    (B[I], (itr, inner_st))
 end
-function Base.iterate(B::Type{<:AbstractBasis}, st)
-    ix_iter, ix_iter_st = st
-    (ix_iter_ret = iterate(ix_iter, ix_iter_st)) === nothing && return nothing
-
-    (B[ix_iter_ret[1]], (ix_iter, ix_iter_ret[2]))
-end
-
-Base.IteratorSize(::Type{<:Type{<:AbstractBasis}}) = Base.HasLength()
-Base.IteratorEltype(::Type{<:Type{<:AbstractBasis}}) = Base.HasEltype()
-
-Base.length(B::Type{<:AbstractBasis}) = dim(B)
-Base.eltype(B::Type{<:AbstractBasis}) = B
