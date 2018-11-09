@@ -1,20 +1,14 @@
+_s(s) = getfield(s, :state)
+
 struct Sub{B<:TensorBasis, M, T} <: TensorBasis{M}
     state::B
 end
 const MaybeSub{B<:ConcreteBasis} = Union{B, Sub{B}}
+Base.getproperty(s::Sub, prop::Symbol) = Base.getproperty(_s(s), prop)
 
-Base.:(==)(x::S, y::S) where S<:Sub = x.state == y.state
+Base.:(==)(x::S, y::S) where S<:Sub = _s(x) == _s(y)
 @commutes Base.:(==)(x::B, y::S) where B<:TensorBasis, S<:Sub{B} =
-    x == y.state
-
-fulldims
-
-dim(B::Type{<:Sub}) = length(basis(B))
-index(b::Sub) = findfirst(==(b), basis(typeof(b)))
-indexbasis(B::Type{<:Sub}, ix::Union{Int, Base.CartesianIndex}) = basis(B)[ix]
-
-innertype(::Type{<:Sub{B}}) where B<:ConcreteBasis = B
-inner(s::Sub{<:ConcreteBasis}) = s.state
+    x == _s(y)
 
 ## Example
 #@defSub Paired{P, L} <: Slater{Pairing{L}} do s
@@ -27,6 +21,15 @@ inner(s::Sub{<:ConcreteBasis}) = s.state
 
 ### Update line
 ##############################################################################################
+
+fulldims() = ...
+
+dim(B::Type{<:Sub}) = length(basis(B))
+index(b::Sub) = findfirst(==(b), basis(typeof(b)))
+indexbasis(B::Type{<:Sub}, ix::Union{Int, Base.CartesianIndex}) = basis(B)[ix]
+
+innertype(::Type{<:Sub{B}}) where B<:ConcreteBasis = B
+inner(s::Sub{<:ConcreteBasis}) = s.state
 
 macro defSub(ty_expr::Expr, expr)
     get_tys(s::Symbol) = [s]
