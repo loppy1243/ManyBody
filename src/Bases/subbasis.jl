@@ -1,19 +1,13 @@
-using ..SpinMod
-
-struct Sub{B<:ConcreteBasis, T} <: ConcreteBasis
+struct Sub{B<:TensorBasis, M, T} <: TensorBasis{M}
     state::B
 end
 const MaybeSub{B<:ConcreteBasis} = Union{B, Sub{B}}
 
-#Base.convert(::Type{B}, x::Sub{B}) where B<:AbstractBasis = x.state
-Base.convert(SB::Type{<:Sub{B}}, x::B) where B<:ConcreteBasis = SB(x)
-Base.convert(B::Type{<:ConcreteBasis}, x::Sub) = convert(B, inner(x))
+Base.:(==)(x::S, y::S) where S<:Sub = x.state == y.state
+@commutes Base.:(==)(x::B, y::S) where B<:TensorBasis, S<:Sub{B} =
+    x == y.state
 
-Base.:(==)(x::S, y::S) where S<:Sub = inner(x) == inner(y)
-#Base.:(==)(x::Sub{B}, y::Sub{B}) where B<:ConcreteBasis = false
-#Base.:(==)(x::MaybeSub{B}, y::MaybeSub{B}) where B<:ConcreteBasis = inner(x) == inner(y)
-Base.promote_rule(::Type{<:Sub{B}}, ::Type{B}) where B<:ConcreteBasis = B
-Base.promote_rule(SB::Type{<:Sub}, B::Type{<:ConcreteBasis}) = promote_type(innertype(SB), B)
+fulldims
 
 dim(B::Type{<:Sub}) = length(basis(B))
 index(b::Sub) = findfirst(==(b), basis(typeof(b)))
@@ -21,6 +15,18 @@ indexbasis(B::Type{<:Sub}, ix::Union{Int, Base.CartesianIndex}) = basis(B)[ix]
 
 innertype(::Type{<:Sub{B}}) where B<:ConcreteBasis = B
 inner(s::Sub{<:ConcreteBasis}) = s.state
+
+## Example
+#@defSub Paired{P, L} <: Slater{Pairing{L}} do s
+#    SP = Pairing{L}
+#
+#    P == count(findall(s.occ)) do I
+#        s.occ[flipspin(SP[I])]
+#    end
+#end
+
+### Update line
+##############################################################################################
 
 macro defSub(ty_expr::Expr, expr)
     get_tys(s::Symbol) = [s]
