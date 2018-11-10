@@ -1,7 +1,7 @@
-_s(s) = getfield(s, :state)
+_s(s) = getfield(s, :_state)
 
 struct Sub{B<:TensorBasis, M, T} <: TensorBasis{M}
-    state::B
+    _state::B
 
     function Sub{B, M, T}(b::B) where {B<:TensorBasis, M, T}
         @assert isdefined(Bases.:subindexmap) #=
