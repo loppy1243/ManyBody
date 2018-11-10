@@ -26,11 +26,11 @@ Base.:(==)(x::B, y::B) where B<:TensorBasis = index(x) == index(y)
 
 include("iter.jl")
 include("pairing.jl")
+include("subbasis.jl")
 
 ### Update Line
 ##############################################################################################
 
-include("subbasis.jl")
 include("product.jl")
 include("interface.jl")
 include("refstates.jl")

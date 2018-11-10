@@ -2,13 +2,24 @@ _s(s) = getfield(s, :state)
 
 struct Sub{B<:TensorBasis, M, T} <: TensorBasis{M}
     state::B
+
+    function Sub{B, M, T}(b::B) where {B<:TensorBasis, M, T}
+        @assert isdefined(Bases.:subindexmap) #=
+             =# && hasmethod(subindexmap, Tuple{Type{Sub{B, M, T}}})
+        @assert findfirst(subindexmap(Sub{B, M, T}), index(b)) !== nothing
+
+        new(b)
+    end
 end
-const MaybeSub{B<:ConcreteBasis} = Union{B, Sub{B}}
 Base.getproperty(s::Sub, prop::Symbol) = Base.getproperty(_s(s), prop)
 
-Base.:(==)(x::S, y::S) where S<:Sub = _s(x) == _s(y)
-@commutes Base.:(==)(x::B, y::S) where B<:TensorBasis, S<:Sub{B} =
-    x == _s(y)
+superbasis(s::Sub{B}) where B<:TensorBasis = B
+B(s::Sub{B}) where B<:TensorBasis = _s(s)
+convert(::Type{B}, s::Sub{B}) where B<:TensorBasis = _s(s)
+
+Base.:(==)(x::Sub, y::Sub) = _s(x) == _s(y)
+Base.:(==)(x::TensorBasis, y::Sub) = x == _s(y)
+Base.:(==)(x::Sub, y::TensorBasis) = _s(x) == y
 
 ## Example
 #@defSub Paired{P, L} <: Slater{Pairing{L}} do s
@@ -19,19 +30,13 @@ Base.:(==)(x::S, y::S) where S<:Sub = _s(x) == _s(y)
 #    end
 #end
 
-### Update line
-##############################################################################################
+fulldims(B::Type{<:Sub}) = map(lastindex, axes(subindexmap(B)))
+# Could store an inverse subindexmap as well.
+index(b::Sub) = findfirst(==(index(_s(b))), subindexmap(typeof(b)))
+indexbasis(SB::Type{<:Sub{<:TensorBasis, M}}, ixs::Vararg{Int, M}) =
+    superbasis(SB)[subindexmap(SB)[CartesianIndex(ixs)]]
 
-fulldims() = ...
-
-dim(B::Type{<:Sub}) = length(basis(B))
-index(b::Sub) = findfirst(==(b), basis(typeof(b)))
-indexbasis(B::Type{<:Sub}, ix::Union{Int, Base.CartesianIndex}) = basis(B)[ix]
-
-innertype(::Type{<:Sub{B}}) where B<:ConcreteBasis = B
-inner(s::Sub{<:ConcreteBasis}) = s.state
-
-macro defSub(ty_expr::Expr, expr)
+macro defSub(f, M, ty_expr::Expr)
     get_tys(s::Symbol) = [s]
     get_tys(x::Expr) = if x.head == :curly
         reduce(vcat, map(get_tys, x.args[2:end]))
@@ -70,25 +75,33 @@ macro defSub(ty_expr::Expr, expr)
 
     new_ty_esc, base_ty_esc = esc.((new_ty, base_ty))
 
-    basis_expr = add_where(:(Bases.basis(::Type{$new_ty_esc})))
-    dict_key_ty = add_where(:(Type{$new_ty_esc}))
-    dict_val_ty = add_where(:(Vector{$new_ty_esc}))
+    subindexmap_expr = add_where(:(Bases.subindexmap(::Type{$new_ty_esc})))
 
     quote
-        struct $subbasis_ty_esc end
-        const $new_ty_esc = Sub{$base_ty_esc, $subbasis_ty_esc}
+        let IXMAP = _makeixmap($f_esc, $base_ty_esc)
+            struct $subbasis_ty_esc end
+            global const $new_ty_esc = Sub{$base_ty_esc, ndims(IXMAP), $subbasis_ty_esc}
 
-        let _BASIS_CACHE = Dict{$dict_key_ty, $dict_val_ty}()
-            $basis_expr = begin
-                if haskey(_BASIS_CACHE, $new_ty_esc)
-                    _BASIS_CACHE[$new_ty_esc]
-                else
-                    x = (() -> $(esc(expr)))()
-                    x = convert(Vector{$base_ty_esc}, x)
-                    @assert allunique(x)
-                    _BASIS_CACHE[$new_ty_esc] = map($new_ty_esc, x)
-                end
-            end
+            $subindexmap_expr = IXMAP
         end
     end
+end
+
+function _makeixmap(f, B)
+    N = rank(B)
+    mask = map(f, eachindex(B))
+
+    sizes = []
+    for d = 1:N
+        sz = count(any(mask, dims=[x for x=1:N if x != d]))
+        !iszero(sz) && push!(sizes, zs)
+    end
+
+    ixmap = Array{CartesianIndices}(undef, sizes...)
+
+    for (I, J) in zip(eachindex(ixmap), findall(mask))
+        ixmap[I] = J
+    end
+
+    ixmap
 end
