@@ -40,8 +40,12 @@ function Base.convert(::Type{Vector{T}}, b::AbstractBasis) where T
     ret
 end
 Base.convert(::Type{Array{T}}, b::TensorBasis) where T = convert(Array{T, rank(typeof(b))}, b)
-
 (A::Type{<:Array})(b::AbstractBasis) = convert(A, b)
+
+norm(b::AbstractBasis) = one(Int)
+norm(T, b::AbstractBasis) = one(T)
+overlap(T, a::B, b::B) where B<:AbstractBasis = a == b ? norm(T, a) : zero(T)
+overlap(a::B, b::B) where B<:AbstractBasis = overlap(Int, a, b)
 
 include("indexing.jl")
 include("iter.jl")
