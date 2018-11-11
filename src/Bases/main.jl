@@ -27,6 +27,20 @@ dim(B::Type{<:TensorBasis}) = prod(fulldims(B))
 
 Base.:(==)(x::B, y::B) where B<:AbstractBasis = index(x) == index(y)
 
+Base.Array{T}(b::TensorBasis) where T = Array{T, rank(b)}(b)
+function Base.Array{T, N}(b::TensorBasis{N}) where {T, N}
+    ret = zeros(T, fulldims(typeof(b)))
+    ret[b] = oneunit(T)
+
+    ret
+end
+function Base.Vector{T}(b::AbstractBasis) where T
+    ret = zeros(T, dim(typeof(b)))
+    ret[linearindex[b]] = oneunit(T)
+
+    ret
+end
+
 include("iter.jl")
 include("pairing.jl")
 include("subbasis.jl")
