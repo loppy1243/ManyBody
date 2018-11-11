@@ -1,18 +1,10 @@
 @reexport module Bases
 #export AbstractBasis, ConcreteBasis, LeafBasis, RefStates, RefState
 
-import ..ManyBody
-using ..ManyBody: AbstractState
-using Base.Cartesian: @ncall
-using LinearAlgebra: Adjoint
-using Combinatorics: combinations
-using Reexport: @reexport
-
-#abstract type AbstractBasis <: AbstractState end
-#abstract type ConcreteBasis <: AbstractBasis end
-#abstract type LeafBasis <: AbstractBasis end
-#abstract type AbstractIndex{B<:ConcreteBasis} <: LeafBasis end
-#const MaybeIndex{B<:ConcreteBasis} = Union{B, AbstractIndex{B}}
+#=Types=#    export AbstractBasis, TensorBasis, Basis
+#=Shape=#    export rank, dim, fulldims
+#=Indexing=# export index, linearindex, indexbasis
+#=Algebra=#  export norm, overlap
 
 abstract type AbstractBasis
 abstract type TensorBasis{Rank} <: AbstractBasis end
