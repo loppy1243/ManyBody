@@ -14,8 +14,12 @@ end
 Base.getproperty(s::Sub, prop::Symbol) = Base.getproperty(_s(s), prop)
 
 superbasis(s::Sub{B}) where B<:TensorBasis = B
-B(s::Sub{B}) where B<:TensorBasis = _s(s)
+supbasis(s::Sub) = superbasis(s)
+supbasis(s::Sub{<:Sub}) = supbasis(superbasis(B))
+
 convert(::Type{B}, s::Sub{B}) where B<:TensorBasis = _s(s)
+convert(B::Type{<:TensorBasis}, s::Sub) = convert(B, _s(s))
+B(s::Sub) where B<:TensorBasis = convert(B, s)
 
 Base.:(==)(x::Sub, y::Sub) = _s(x) == _s(y)
 Base.:(==)(x::TensorBasis, y::Sub) = x == _s(y)
