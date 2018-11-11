@@ -6,7 +6,7 @@
 #    bits::BitArray{N}
 #end
 
-struct Product{M, BS<:NTuple{<:Any, ConcreteBasis}} <: TensorBasis{M}
+struct Product{BS<:NTuple{<:Any, ConcreteBasis}, M} <: TensorBasis{M}
     _states::BS
 
     function Product{M, BS}(states::BS) where {M, BS<:NTuple{<:Any, ConcreteBasis}}
@@ -21,8 +21,8 @@ Product(args::TensorBasis...) = Product(args)
 Base.:(==)(a::B, b::B) where B<:Product = a._states == b._states
 
 index(b::Product) = CartesianIndex(map(index, b._states))
-@generated function indexbasis(B::Type{<:Product{M, BS}}, ixs::Vararg{Int, M}) where
-                              {M, BS<:NTuple{<:Any, TensorBasis}}
+@generated function indexbasis(B::Type{<:Product{BS, M}}, ixs::Vararg{Int, M}) where
+                              {BS<:NTuple{<:Any, TensorBasis}, M}
     ranks = vcat([0], map(rank, BS.types))
     ranges = [1+ranks[i-1]:ranks[i] for i=2:length(ranks)]
 
