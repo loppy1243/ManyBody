@@ -20,7 +20,7 @@ const Basis = TensorBasis{1}
 #abstract type FockBasis{SPBasis<:TensorBasis} <: AbstractBasis end
 
 rank(::Type{<:TensorBasis{N}}) where N = N
-rank(b::AbstractBasis) = rank(typeof(b))
+rank(b::TensorBasis) = rank(typeof(b))
 dim(B::Type{<:TensorBasis}) = prod(fulldims(B))
 # Good way to do this?
 #fulldims(B::Type{<:Basis}) = (dim(B),)
@@ -31,10 +31,10 @@ include("iter.jl")
 include("pairing.jl")
 include("subbasis.jl")
 include("product.jl")
+include("slater.jl")
 
 ### Update Line
 ##############################################################################################
 
-include("slater.jl")
 include("refstates.jl")
 end # module States
