@@ -1,16 +1,10 @@
-# Slater{B} == Product{N, NTuple{N, B}} where N for 0 <= N <= dim(B)
-
-#abstract type AbstractProduct <: ConcreteBasis
-#
-#struct BitProduct{N, BS<:NTuple{N, ConcreteBasis}} <: AbstractProduct
-#    bits::BitArray{N}
-#end
+# Slater{B} == Product{NTuple{N, B}, Inf} where N for 0 <= N <= dim(B)
 
 ## Really should be Products of AbstractBasis
 struct Product{BS<:NTuple{<:Any, TensorBasis}, M} <: TensorBasis{M}
     _states::BS
 
-    function Product{M, BS}(states::BS) where {M, BS<:NTuple{<:Any, ConcreteBasis}}
+    function Product{M, BS}(states::BS) where {M, BS<:NTuple{<:Any, AbstractBasis}}
         @assert M == sum(rank, states)
         new(states)
     end
