@@ -1,6 +1,8 @@
 @reexport module Operators
 export tabulate, normord, applyop, applyop!
 
+### Tabulation
+##############################################################################################
 tabulate(op) = tabulate(Array{eltype(op)}, op)
 tabulate(A::Type{<:AbstractArray}, op::ArrayOperator) =
     ArrayOperator{basistype(op)}(convert(A, op.rep))
@@ -19,14 +21,22 @@ end
 
 tabulate(f, T, B) = tabulate(f, T, B, B)
 tabulate(f, T::Type, BL, BR) = tabulate(f, Array{T}, BL, BR)
-@generated function tabulate(f, A::Type{<:AbstractArray}, ::Type{BL}, ::Type{BR}) where
-                            {BL<:AbstractBasis, BR<:AbstractBasis}
+
+function _gen_tabulate(do_assert, f, A, BL, BR)
     ldims = BL<:TensorBasis ? fulldims(BL) : (dim(BL),)
     rdims = BR<:TensorBasis ? fulldims(BR) : (dim(BR),)
     dims = (ldims..., rdims...)
     rank = length(dims)
 
+    assert_expr = if do_assert
+        :()
+    else
+        :(@assert ndims(A) == $rank "Provided array type not supported for given bases!")
+    end
+
     quote
+        $assert_expr
+
         ret = similar(A, $dims)
         for (bl, br) in Iterators.product(BL, BR)
             ret[bl, br] = f(bl, br)
@@ -35,15 +45,26 @@ tabulate(f, T::Type, BL, BR) = tabulate(f, Array{T}, BL, BR)
         ret
     end
 end
-function tabulate(f, A::Type{<:Matrix}, BL::Type{<:AbstractBasis}, BR::Type{<:AbstractBasis})
-    ret = similar(A, dim(BL), dim(B))
-    for (bl, br) in Iterator.product(BL, BR)
-        ret[linearindex(bl), linearindex(br)] = f(bl, br)
+@generated tabulate(f, A::Type{<:AbstractArray{T, N}}, ::Type{BL}, ::Type{BR}) where
+                   {T, N, BL<:AbstractBasis, BR<:AbstractBasis} =
+    _gen_tabulate(true, f, A, BL, BR)
+@generated tabulate(f, A::Type{<:AbstractArray{T}}, ::Type{BL}, ::Type{BR}) where
+                   {T, BL<:AbstractBasis, BR<:AbstractBasis} =
+    _gen_tabulate(false, f, A, BL, BR)
+
+function tabulate(f, A::Type{<:AbstractMatrix},
+                  BL::Type{<:AbstractBasis}, BR::Type{<:AbstractBasis})
+    ret = similar(A, dim(BL), dim(BR))
+    LIl, LIr = LinearIndices(BL), LinearIndices(BR)
+    for (bl, br) in Iterators.product(BL, BR)
+        ret[LIl[bl], LIr[br]] = f(bl, br)
     end
     
     ret
 end
 
+### Raising and Lowering Operators
+##############################################################################################
 struct RaiseOp{SP<:AbstractBasis}
     state::SP
 end
