@@ -28,7 +28,7 @@ Base.:(==)(x::Sub, y::TensorBasis) = _s(x) == y
 fulldims(B::Type{<:Sub}) = map(lastindex, axes(subindexmap(B)))
 # Could store an inverse subindexmap as well.
 index(b::Sub) = findfirst(==(index(_s(b))), subindexmap(typeof(b)))
-indexbasis(SB::Type{<:Sub{<:TensorBasis, M}}, ixs::Vararg{Int, M}) =
+indexbasis(SB::Type{<:Sub{<:TensorBasis, M}}, ixs::Vararg{Int, M}) where M =
     superbasis(SB)[subindexmap(SB)[CartesianIndex(ixs)]]
 
 macro defSub(f, M, ty_expr::Expr)
