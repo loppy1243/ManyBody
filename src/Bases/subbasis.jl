@@ -4,18 +4,20 @@ struct Sub{B<:AbstractBasis, T} <: AbstractBasis
     _state::B
 
     function Sub{B, T}(b::B) where {B<:AbstractBasis, T}
-        @assert isdefined(Bases.:subindexmap) #=
-             =# && hasmethod(subindexmap, Tuple{Type{Sub{B, T}}})
-        @assert findfirst(subindexmap(Sub{B, T}), index(b)) !== nothing
+        @assert hasmethod(Base.in, Tuple{B, Type{Sub{B, T}}})
+        @assert b in Sub{B, T}
 
         new(b)
     end
 end
 Base.getproperty(s::Sub, prop::Symbol) = Base.getproperty(_s(s), prop)
 
-superbasis(s::Sub{B}) where B<:TensorBasis = B
-supbasis(s::Sub) = superbasis(s)
-supbasis(s::Sub{<:Sub}) = supbasis(superbasis(B))
+superbasis(s::Type{<:Sub{B}}) where B<:AbstractBasis = B
+superbasis(s::Sub) = superbasis(typeof(s))
+supbasis(s::Type{<:Sub}) = superbasis(s)
+supbasis(s::Type{<:Sub{<:Sub}}) = supbasis(superbasis(B))
+supbasis(s::Sub) = supbasis(typeof(s))
+
 superindex(s::Sub) = index(_s(s))
 supindex(s::Sub) = superindex(s)
 supindex(s::Sub{<:Sub}) = supindex(superindex(s))
@@ -28,11 +30,18 @@ Base.:(==)(x::Sub, y::Sub) = _s(x) == _s(y)
 Base.:(==)(x::TensorBasis, y::Sub) = x == _s(y)
 Base.:(==)(x::Sub, y::TensorBasis) = _s(x) == y
 
-fulldims(B::Type{<:Sub}) = map(lastindex, axes(subindexmap(B)))
-# Could store an inverse subindexmap as well.
-index(b::Sub) = findfirst(==(index(_s(b))), subindexmap(typeof(b)))
-indexbasis(SB::Type{<:Sub{<:TensorBasis, M}}, ixs::Vararg{Int, M}) where M =
-    superbasis(SB)[subindexmap(SB)[CartesianIndex(ixs)]]
+Base.in(x, SB::Type{<:Sub}) = convert(superbasis(SB), x) in SB
+
+let IXMAPS=Dict{Type{Sub}, Union{Vector{Int}, Vector{CartesianIndex}}}
+    function Bases.subindexmap(B::Sub)
+    end
+end
+
+dim(SB::Type{<:Sub}) = count(b in SB for b in superbasis(SB))
+function index(sb::Sub)
+end
+indexbasis(SB::Type{<:Sub}, i) =
+    
 
 macro defSub(f, ty_expr::Expr)
     get_tys(s::Symbol) = [s]
@@ -73,33 +82,14 @@ macro defSub(f, ty_expr::Expr)
 
     new_ty_esc, base_ty_esc = esc.((new_ty, base_ty))
 
-    subindexmap_expr = add_where(:(Bases.subindexmap(::Type{$new_ty_esc})))
+    in_expr(b) = add_where(:(Base.in($b::$base_ty_esc, ::Type{$new_ty_esc})))
+
+    clos_param(s::Symbol) = s
+    clos_param(s::Expr) = (@assert(s.head === :tuple && length(s.args) == 1); s.args[1])
 
     quote
-        let IXMAP = _makeixmap($(esc(f)), $base_ty_esc)
-            struct $subbasis_ty_esc end
-            global const $new_ty_esc = Sub{$base_ty_esc, $subbasis_ty_esc}
-
-            $subindexmap_expr = IXMAP
-        end
+        struct $subbasis_ty_esc end
+        global const $new_ty_esc = Sub{$base_ty_esc, $subbasis_ty_esc}
+        $(in_expr(clos_param(f.args[1]))) = $(esc(f.args[2]))
     end
-end
-
-function _makeixmap(f, B)
-    N = rank(B)
-    mask = map(f, B)
-
-    sizes = []
-    for d = 1:N
-        sz = count(any(mask, dims=[x for x=1:N if x != d]))
-        !iszero(sz) && push!(sizes, zs)
-    end
-
-    ixmap = Array{CartesianIndices}(undef, sizes...)
-
-    for (I, J) in zip(eachindex(ixmap), findall(mask))
-        ixmap[I] = J
-    end
-
-    ixmap
 end
