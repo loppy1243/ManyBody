@@ -3,64 +3,32 @@ export tabulate, normord, applyop, applyop!
 
 ### Tabulation
 ##############################################################################################
-tabulate(op) = tabulate(Array{eltype(op)}, op)
-tabulate(A::Type{<:AbstractArray}, op::ArrayOperator) =
-    ArrayOperator{basistype(op)}(convert(A, op.rep))
-function tabulate(A::Type{<:AbstractArray}, op::AbstractOperator)
-    B = basistype(op)
-    BI = indextype(B)
-    ds = innerdims(B)
-    ret = similar(A, ds..., ds...)
-
-    for (I, J) in cartesian_pow(eachindex(B), Val{2})
-        ret[I, J] = op[BI[I], BI[J]]
+function tabulate!(f, A::AbstractArray, BL::Type{<:AbstractBasis}, BR::Type{<:AbstractBasis}
+                  ;leftindices=nothing, rightindices=nothing)
+    Il = leftindices === nothing ? tabulate_lindices(typeof(A), BL) : leftindices
+    Ir = rightindices === nothing ? tabulate_rindices(typeof(A), BR) : rightindices
+    for (bl, br) in Iterators.product(BL, BR)
+        _tabulate!_kernel(A, Il, bl, Ir, br, f)
     end
 
-    ArrayOperator{B}(ret)
+    A
 end
+_tabulate!_kernel(A, Il, bl, Ir, br, f) = A[Il[bl], Ir[br]] = f
+
+tabulate_lindices(A, B) = tabulate_indices(A, B)
+tabulate_rindices(A, B) = tabulate_indices(A, B)
+tabulate_indices(::Type{<:AbstractArray}, B) = CartesianIndices(B)
+tabulate_indices(::Type{<:AbstractMatrix}, B) = LinearIndices(B)
 
 tabulate(f, T, B) = tabulate(f, T, B, B)
 tabulate(f, T::Type, BL, BR) = tabulate(f, Array{T}, BL, BR)
+@generated function tabulate(f, A::Type{<:AbstractArray}, ::Type{BL}, ::Type{BR}) where
+                 {BL<:AbstractBasis, BR<:AbstractBasis}
+    lindices = tabulate_lindices(A, BL)
+    rindices = tabulate_rindices(A, BR)
+    dims = (size(lindices)..., size(rindices)...)
 
-function _gen_tabulate(do_assert, f, A, BL, BR)
-    ldims = BL<:TensorBasis ? fulldims(BL) : (dim(BL),)
-    rdims = BR<:TensorBasis ? fulldims(BR) : (dim(BR),)
-    dims = (ldims..., rdims...)
-    rank = length(dims)
-
-    assert_expr = if do_assert
-        :()
-    else
-        :(@assert ndims(A) == $rank "Provided array type not supported for given bases!")
-    end
-
-    quote
-        $assert_expr
-
-        ret = similar(A, $dims)
-        for (bl, br) in Iterators.product(BL, BR)
-            ret[bl, br] = f(bl, br)
-        end
-
-        ret
-    end
-end
-@generated tabulate(f, A::Type{<:AbstractArray{T, N}}, ::Type{BL}, ::Type{BR}) where
-                   {T, N, BL<:AbstractBasis, BR<:AbstractBasis} =
-    _gen_tabulate(true, f, A, BL, BR)
-@generated tabulate(f, A::Type{<:AbstractArray{T}}, ::Type{BL}, ::Type{BR}) where
-                   {T, BL<:AbstractBasis, BR<:AbstractBasis} =
-    _gen_tabulate(false, f, A, BL, BR)
-
-function tabulate(f, A::Type{<:AbstractMatrix},
-                  BL::Type{<:AbstractBasis}, BR::Type{<:AbstractBasis})
-    ret = similar(A, dim(BL), dim(BR))
-    LIl, LIr = LinearIndices(BL), LinearIndices(BR)
-    for (bl, br) in Iterators.product(BL, BR)
-        ret[LIl[bl], LIr[br]] = f(bl, br)
-    end
-    
-    ret
+    :(tabulate!(f, similar(A, $dims), BL, BR; leftindices=lindices, rightindices=rindices))
 end
 
 ### Raising and Lowering Operators
