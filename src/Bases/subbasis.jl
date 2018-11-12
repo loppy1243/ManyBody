@@ -31,7 +31,7 @@ index(b::Sub) = findfirst(==(index(_s(b))), subindexmap(typeof(b)))
 indexbasis(SB::Type{<:Sub{<:TensorBasis, M}}, ixs::Vararg{Int, M}) where M =
     superbasis(SB)[subindexmap(SB)[CartesianIndex(ixs)]]
 
-macro defSub(f, M, ty_expr::Expr)
+macro defSub(f, ty_expr::Expr)
     get_tys(s::Symbol) = [s]
     get_tys(x::Expr) = if x.head == :curly
         reduce(vcat, map(get_tys, x.args[2:end]))
