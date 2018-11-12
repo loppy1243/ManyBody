@@ -1,44 +1,61 @@
 export create, create!, annihil, annihil!
 
-struct Slater{SPB<:TensorBasis} <: AbstractBasis
+struct Slater{SPB<:AbstractBasis} <: AbstractBasis
     bits::BitArray
 
-    function Slater{SPB}(parts::BitArray) where B<:TensorBasis
+    function Slater{SPB}(parts::BitArray) where SPB<:TensorBasis
         @assert size(parts) == fulldims(SPB)
         new(parts)
     end
-    function Slater{SPB}(parts) where SPB<:TensorBasis
-        bits = falses(fulldims(SPB))
+    function Slater{SPB}(parts::BitVector) where SPB<:AbstractBasis
+        @assert length(parts) == dim(SPB)
+        new(parts)
+    end
+end
+@generated function Slater{SPB}(parts) where SPB<:AbstractBasis
+    if SPB<:TensorBasis
+        bits_size_expr = :(fulldims(SPB))
+        index_expr(p) = :(index($p))
+    else
+        bits_size_expr = :(dim(SPB))
+        index_expr(p) = :(linearindex($p))
+    end
+    
+    quote
+        bits = falses($bits_size_expr)
 
         for p in parts
             p = convert(SPB, p)
 
-            bits[index(p)] = true
+            bits[$(index_expr(:p))] = true
         end
 
-        new(bits)
+        Slater{SPB}(bits)
     end
 end
-Slater{SPB}(ps...) where SPB<:TensorBasis = Slater{SPB}(ps)
-Slater(ps::NTuple{<:Any, B}) where B<:TensorBasis = Slater{B}(ps)
-Slater(ps::B...) where B<:TensorBasis = Slater{B}(ps)
+Slater{SPB}(ps...) where SPB<:AbstractBasis = Slater{SPB}(ps)
+Slater(ps::NTuple{<:Any, SPB}) where SPB<:AbstractBasis = Slater{SPB}(ps)
+Slater(ps::SPB...) where SPB<:AbstractBasis = Slater{SPB}(ps)
 
-spbasis(::Type{Slater{SPB}}) where SPB<:TensorBasis = SPB
+spbasis(::Type{Slater{SPB}}) where SPB<:AbstractBasis = SPB
 spbasis(::Slater) = spbasis(typeof(Slater))
 
 Base.:(==)(s1::B, s2::B) where B<:Slater = s1.bits == s2.bits
 
-Base.in(p::TensorBasis, s::Slater) = s.bits[convert(spbasis(s), p)]
+Base.in(p::AbstractBasis, s::Slater) = s.bits[convert(spbasis(s), p)]
 
 index(s::Slater) = sum(s.bits[i]*(1 << (i-1)) for i in LinearIndices(s.bits))
-function indexbasis(B::Type{<:Slater}, ix::Int)
-    SPB = spbasis(B)
-    bits = falses(fulldims(SPB))
-    for i in LinearIndices(bits)
-        bits[i] = (ix & (1 << (i-1))) != 0
-    end
+@generated function indexbasis(B::Type{<:Slater}, ix::Int)
+    bits_size_expr = spbasis(B)<:TensorBasis ? :(fulldims(SPB)) : :(dim(SPB))
 
-    B(bits)
+    quote
+        bits = falses($bits_size_expr)
+        for i in LinearIndices(bits)
+            bits[i] = (ix & (1 << (i-1))) != 0
+        end
+
+        B(bits)
+    end
 end
 
 dim(B::Type{<:Slater}) = 2^dim(spbasis(B)) - 1
