@@ -11,21 +11,15 @@ struct Slater{SPB<:AbstractBasis} <: MBBasis{SPB}
     end
 end
 @generated function Slater{SPB}(parts) where SPB<:AbstractBasis
-    if SPB<:TensorBasis
-        bits_size_expr = :(fulldims(SPB))
-        index_expr(p) = :(index($p))
-    else
-        bits_size_expr = :(dim(SPB))
-        index_expr(p) = :(linearindex($p))
-    end
-    
+    bits_size_expr = SPB<:TensorBasis ? :(fulldims(SPB)) : :(dim(SPB))
+
     quote
         bits = falses($bits_size_expr)
 
         for p in parts
             p = convert(SPB, p)
 
-            bits[$(index_expr(:p))] = true
+            bits[p] = true
         end
 
         Slater{SPB}(bits)
