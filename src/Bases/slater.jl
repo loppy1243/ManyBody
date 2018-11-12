@@ -1,4 +1,4 @@
-struct Slater{SPB<:AbstractBasis} <: MBBasis
+struct Slater{SPB<:AbstractBasis} <: MBBasis{SPB}
     bits::BitArray
 
     function Slater{SPB}(parts::BitArray) where SPB<:TensorBasis
