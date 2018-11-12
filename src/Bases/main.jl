@@ -45,9 +45,5 @@ include("pairing.jl")
 include("subbasis.jl")
 include("product.jl")
 include("slater.jl")
-
-### Update Line
-##############################################################################################
-
 include("refstates.jl")
 end # module States

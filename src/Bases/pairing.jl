@@ -21,7 +21,7 @@ indexbasis(B::Type{<:Pairing}, level::Int, snum::Int) =
 
 flipspin(p::Pairing) = typeof(p)(p.level, flip(p.spin))
 
-nlevels(a::TensorBasis) = nlevels(typeof(a))
+nlevels(a::Pairing) = nlevels(typeof(a))
 nlevels(::Type{Pairing{L}}) where L = L
 
 Base.show(io::IO, x::Pairing) = print(io, level(x), spinup(spin(x)) ? "↑" : "↓")
@@ -46,3 +46,7 @@ function Base.show(io::IO, ::MIME"text/plain", x::Pairing)
         end
     end
 end
+
+nparts(ref::RefStates.Fermi{<:Pairing}) = 2(nlevels(spbasis(f)) - ref.fermilevel)
+nholes(ref::RefStates.Fermi{<:Pairing}) = 2ref.fermilevel
+isocc(ref::RefStates.Fermi{SPB}, b::SPB) where SPB<:Pairing = b.level <= ref.fermilevel
