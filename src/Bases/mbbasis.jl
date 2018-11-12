@@ -6,7 +6,8 @@ spbasis(::Type{<:MBBasis{SPB}}) where SPB<:AbstractBasis = SPB
 spbasis(r::RefState) = spbasis(typeof(r))
 spbasis(r::MBBasis) = spbasis(typeof(r))
 
-# Must define isocc()
+# Must define
+isocc(x) = MethodError(isocc, (x,)) |> throw
 occ(x) = [p for p in spbasis(mb) if isocc(x, p)]
 unocc(x) = [p for p in spbasis(mb) if isunocc(x, p)]
 nocc(x) = length(occ(x))
