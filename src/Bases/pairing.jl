@@ -1,5 +1,4 @@
 export Pairing, nlevels, flipspin
-#import .RefStates
 using ..SpinMod
 
 struct Pairing{Levels} <: TensorBasis{2}
@@ -21,9 +20,9 @@ indexbasis(B::Type{<:Pairing}, level::Int, snum::Int) =
 
 ### Fermi{<:Pairing} methods
 ##############################################################################################
-nocc(ref::RefStates.Fermi{<:Pairing}) = 2(nlevels(spbasis(f)) - ref.fermilevel)
-nunocc(ref::RefStates.Fermi{<:Pairing}) = 2ref.fermilevel
-isocc(ref::RefStates.Fermi{<:Pairing}, b) where SPB<:Pairing =
+nocc(ref::Fermi{<:Pairing}) = 2(nlevels(spbasis(f)) - ref.fermilevel)
+nunocc(ref::Fermi{<:Pairing}) = 2ref.fermilevel
+isocc(ref::Fermi{<:Pairing}, b) where SPB<:Pairing =
     convert(spbasis(ref)).level <= ref.fermilevel
 
 ### Pairing methods

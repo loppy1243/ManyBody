@@ -11,7 +11,7 @@
                     holes, parts, nholes, nparts, ishole, ispart,
                     spbasis
 
-abstract type AbstractBasis
+abstract type AbstractBasis end
 abstract type TensorBasis{Rank} <: AbstractBasis end
 const Basis = TensorBasis{1}
 #abstract type FockBasis{SPBasis<:TensorBasis} <: AbstractBasis end
@@ -46,10 +46,10 @@ overlap(a::B, b::B) where B<:AbstractBasis = overlap(Int, a, b)
 
 include("indexing.jl")
 include("iter.jl")
+include("mbbasis.jl")
 include("pairing.jl")
 include("subbasis.jl")
 include("product.jl")
-include("mbbasis.jl")
 include("slater.jl")
 
 @defSub(Paired{P, L} <: Slater{Pairing{L}}) do s
