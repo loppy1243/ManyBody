@@ -3,10 +3,8 @@ module Exec
 using ManyBody
 using ManyBody.Operators: @A
 
-Bases.@defSub NPairing{L, P} <: Bases.Slater{Bases.Pairing{L}} do b
-    ps = occ(b)
-
-    length(ps) && all(p -> p.level <= L, occ(b))
+Bases.@defSub(NPairing{L, P} <: Bases.Slater{Bases.Pairing{L}}) do b
+    nocc(b) == P && all(p -> p.level <= L, occ(b))
 end
 
 const LEVEL_SPACING = 1
@@ -15,22 +13,26 @@ const REFSTATE = RefStates.Fermi{SPBASIS, 2}
 const MBBASIS = Bases.Paired{2, 4}
 #const MBBASIS = NPairing{4, 4}
 
-f(g) = F64FunctionOperator{MBBASIS}() do X, Y
-    sum(SPBASIS) do p
-        LEVEL_SPACING*(level(p)-1)*(X'A(p', p)(Y))
-    end
+f(g) = (X, Y) -> sum(spbasis(Y)) do p
+    sgn, Y′ = @A(p', p)
+    LEVEL_SPACING*(p.level-1)*sgn*overlap(X, Y′)
 end
 
-V(g) = F64FunctionOperator{MBBASIS}() do X, Y
-    -g/2 * sum(cartesian_pow(1:nlevels(SPBASIS), Val{2})) do ls
-        p, q, r, s = SPBASIS.((ls[1], ls[1], ls[2], ls[2]),
-                              (SPINUP, SPINDOWN, SPINUP, SPINDOWN))
-        X'A(p', q', s, r)(Y)
+V(g) = (X, Y) -> begin
+    SPB = spbasis(Y)
+    -g/2 * sum(Iterators.product(SPB, SPB, SPB, SPB)) do (p, q, r, s)
+        mask  = p.level == q.level
+        mask *= r.level == s.level
+        mask *= spinup(p)*spindown(q)
+        mask *= spinup(r)*spindown(s)
+
+        sgn, Y′ = @A(p', q', s, r)
+        mask*sgn*overlap(X, Y′)
     end
 end
 
 H(g) = f(g) + V(g)
-main() = tabulate(H(1.0))
+main() = tabulate(H(1.0), Float64, MBBASIS, MBBASIS)
 
 end # module Exec
 Exec.main()
