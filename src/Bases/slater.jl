@@ -37,6 +37,9 @@ Slater{SPB}(ps...) where SPB<:AbstractBasis = Slater{SPB}(ps)
 Slater(ps::NTuple{<:Any, SPB}) where SPB<:AbstractBasis = Slater{SPB}(ps)
 Slater(ps::SPB...) where SPB<:AbstractBasis = Slater{SPB}(ps)
 
+Slater(ref::RefState) = Slater{spbasis(ref)}(occ(ref))
+Slater{SPB}(ref::RefState{SPB}) where SPB<:AbstractBasis = Slater{SPB}(occ(ref))
+
 spbasis(::Type{Slater{SPB}}) where SPB<:AbstractBasis = SPB
 spbasis(::Slater) = spbasis(typeof(Slater))
 
