@@ -10,4 +10,12 @@ Base.LinearIndices(B::Type{<:AbstractBasis}) = LinearIndices((dim(B),))
 Base.CartesianIndices(B::Type{<:TensorBasis}) = CartesianIndices(fulldims(B))
 Base.LinearIndices(B::Type{<:TensorBasis}) = LinearIndices(fulldims(B))
 
-linearindex(B::Type{<:AbstractIndex}) = LinearIndices(b)[b]
+"""
+    linearindex(b)
+
+Compute the linear index for the basis element `b`.
+
+Usually you want to use `LinearIndices(typeof(b))` instead so that the linear index of
+multiple elements may be computed with less overhead.
+"""
+linearindex(B::AbstractBasis) = LinearIndices(typeof(b))[b]
