@@ -19,7 +19,7 @@ end # module RefStates
 spbasis(::Type{<:RefState{SPB}}) where SPB<:AbstractBasis = SPB
 spbasis(r::RefState) = spbasis(typeof(r))
 
-parts(ref::RefStates.Vacuum) = [p for p in spbasis(ref)]
+parts(ref::RefStates.Vacuum) = collect(spbasis(ref))
 parts(ref::RefStates.Fermi) = [p for p in spbasis(ref) if p.level > ref.fermilevel]
 const unocc = parts
 
