@@ -6,7 +6,8 @@
 #    bits::BitArray{N}
 #end
 
-struct Product{BS<:NTuple{<:Any, ConcreteBasis}, M} <: TensorBasis{M}
+## Really should be Products of AbstractBasis
+struct Product{BS<:NTuple{<:Any, TensorBasis}, M} <: TensorBasis{M}
     _states::BS
 
     function Product{M, BS}(states::BS) where {M, BS<:NTuple{<:Any, ConcreteBasis}}
