@@ -1,6 +1,4 @@
-export create, create!, annihil, annihil!
-
-struct Slater{SPB<:AbstractBasis} <: AbstractBasis
+struct Slater{SPB<:AbstractBasis} <: MBBasis
     bits::BitArray
 
     function Slater{SPB}(parts::BitArray) where SPB<:TensorBasis
@@ -36,17 +34,20 @@ end
 Slater{SPB}(ps...) where SPB<:AbstractBasis = Slater{SPB}(ps)
 Slater(ps::NTuple{<:Any, SPB}) where SPB<:AbstractBasis = Slater{SPB}(ps)
 Slater(ps::SPB...) where SPB<:AbstractBasis = Slater{SPB}(ps)
-
 Slater(ref::RefState) = Slater{spbasis(ref)}(occ(ref))
 Slater{SPB}(ref::RefState{SPB}) where SPB<:AbstractBasis = Slater{SPB}(occ(ref))
 
-spbasis(::Type{Slater{SPB}}) where SPB<:AbstractBasis = SPB
-spbasis(::Slater) = spbasis(typeof(Slater))
+### MBBasis methods
+##############################################################################################
+occ(s::Slater) = (SPB=spbasis(s); map(i -> SPB[i], findall(s.bits)))
+unocc(s::Slater) = (SPB=spbasis(s); map(i -> SPB[i], findall(.~s.bits)))
+nocc(s::Slater) = count(s.bits)
+nunocc(s::Slater) = count(.~s.bits)
+isocc(s::Slater, p) = s.bits[convert(spbasis(s), p)]
 
-Base.:(==)(s1::B, s2::B) where B<:Slater = s1.bits == s2.bits
-
-Base.in(p::AbstractBasis, s::Slater) = s.bits[convert(spbasis(s), p)]
-
+### AbstractBasis methods
+##############################################################################################
+dim(B::Type{<:Slater}) = 2^dim(spbasis(B)) - 1
 index(s::Slater) = sum(s.bits[i]*(1 << (i-1)) for i in LinearIndices(s.bits))
 @generated function indexbasis(::Type{B}, ix::Int) where B<:Slater
     bits_size_expr = spbasis(B)<:TensorBasis ? :(fulldims(SPB)) : :(dim(SPB))
@@ -61,9 +62,9 @@ index(s::Slater) = sum(s.bits[i]*(1 << (i-1)) for i in LinearIndices(s.bits))
     end
 end
 
-dim(B::Type{<:Slater}) = 2^dim(spbasis(B)) - 1
-#nocc(s::Slater) = count(s.bits)
-#nunocc(s::Slater) = count(.~s.bits)
+### Slater methods
+##############################################################################################
+Base.:(==)(s1::B, s2::B) where B<:Slater = s1.bits == s2.bits
 
 function create!(s::Slater, p)
     p::spbasis(s) = p

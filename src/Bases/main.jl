@@ -1,10 +1,15 @@
 @reexport module Bases
 #export AbstractBasis, ConcreteBasis, LeafBasis, RefStates, RefState
 
-#=Types=#    export AbstractBasis, TensorBasis, Basis
+#=Modules=#  export RefStates
+#=Types=#    export AbstractBasis, TensorBasis, Basis, RefState, Vacuum, Fermi
 #=Shape=#    export rank, dim, fulldims
 #=Indexing=# export index, linearindex, indexbasis
 #=Algebra=#  export norm, overlap
+#=Slater=#   export create, create!, annihil, annihil!
+#=MBBasis=#  export occ,   unocc, nocc,   nunocc, isocc,  isunocc,
+                    holes, parts, nholes, nparts, ishole, ispart,
+                    spbasis
 
 abstract type AbstractBasis
 abstract type TensorBasis{Rank} <: AbstractBasis end
@@ -44,8 +49,8 @@ include("iter.jl")
 include("pairing.jl")
 include("subbasis.jl")
 include("product.jl")
+include("mbbasis.jl")
 include("slater.jl")
-include("refstates.jl")
 
 @defSub Paired{P, L} <: Slater{Pairing{L}} do s
     SP = Pairing{L}

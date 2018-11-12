@@ -1,33 +1,13 @@
-macro try_reload(expr)
-    quote
-        try
-            Base._require(Base.PkgId($(esc(expr))))
-        catch ex
-            if ex isa UndefVarError
-                @info $(string(expr))*" is not currently defined"
-            else
-                rethrow()
-            end
-        end
-    end
-end
-
-@try_reload Exec.ManyBody
-
 module Exec
 
 using ManyBody
-using ManyBody.Operators: A
-using Combinatorics: combinations
-using JuliaUtil: cartesian_pow
+using ManyBody.Operators: @A
 
-Bases.@defSub NPairing{L, P} <: Bases.Slater{Bases.Pairing{L}} begin
-    SP = Bases.Pairing{L}
-    MB = Bases.Slater{SP}
+Bases.@defSub NPairing{L, P} <: Bases.Slater{Bases.Pairing{L}} do b
+    ps = occ(b)
 
-    [MB(sps) for sps in combinations(SP, P)]
+    length(ps) && all(p -> p.level <= L, occ(b))
 end
-Bases.IndexType(::Type{<:NPairing}) = Bases.IndexTypes.Linear()
 
 const LEVEL_SPACING = 1
 const SPBASIS = Bases.Pairing{4}

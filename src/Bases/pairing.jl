@@ -2,8 +2,6 @@ export Pairing, nlevels, flipspin
 #import .RefStates
 using ..SpinMod
 
-SpinMod.spinup(sp::Pairing) = spinup(sp.spin)
-
 struct Pairing{Levels} <: TensorBasis{2}
     level::Int
     spin::Spin
@@ -14,11 +12,23 @@ struct Pairing{Levels} <: TensorBasis{2}
     end
 end
 
+### TensorBasis methods
+##############################################################################################
 fulldims(B::Type{<:Pairing}) = (nlevels(B), 2)
 index(sp::Pairing) = CartesianIndex(p.level, 1+Bool(p.spin))
 indexbasis(B::Type{<:Pairing}, level::Int, snum::Int) =
     B(level, Spin(Bool(snum-1)))
 
+### Fermi{<:Pairing} methods
+##############################################################################################
+nocc(ref::RefStates.Fermi{<:Pairing}) = 2(nlevels(spbasis(f)) - ref.fermilevel)
+nunocc(ref::RefStates.Fermi{<:Pairing}) = 2ref.fermilevel
+isocc(ref::RefStates.Fermi{<:Pairing}, b) where SPB<:Pairing =
+    convert(spbasis(ref)).level <= ref.fermilevel
+
+### Pairing methods
+##############################################################################################
+SpinMod.spinup(sp::Pairing) = spinup(sp.spin)
 flipspin(p::Pairing) = typeof(p)(p.level, flip(p.spin))
 
 nlevels(a::Pairing) = nlevels(typeof(a))
@@ -46,7 +56,3 @@ function Base.show(io::IO, ::MIME"text/plain", x::Pairing)
         end
     end
 end
-
-nparts(ref::RefStates.Fermi{<:Pairing}) = 2(nlevels(spbasis(f)) - ref.fermilevel)
-nholes(ref::RefStates.Fermi{<:Pairing}) = 2ref.fermilevel
-isocc(ref::RefStates.Fermi{SPB}, b::SPB) where SPB<:Pairing = b.level <= ref.fermilevel
