@@ -31,7 +31,7 @@ function Base.convert(::Type{Vector{T}}, b::AbstractBasis) where T
 
     ret
 end
-Base.convert(::Type{Array{T}}, b::TensorBasis) where T = convert(Array{T, rank(typeof(b))}, b)
+Base.convert(::Type{Array{T}}, b::TensorBasis) where T = convert(Array{T, rank(b)}, b)
 (A::Type{<:Array})(b::AbstractBasis) = convert(A, b)
 
 norm(b::AbstractBasis) = one(Int)
