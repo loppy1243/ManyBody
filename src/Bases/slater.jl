@@ -45,7 +45,7 @@ Base.:(==)(s1::B, s2::B) where B<:Slater = s1.bits == s2.bits
 Base.in(p::AbstractBasis, s::Slater) = s.bits[convert(spbasis(s), p)]
 
 index(s::Slater) = sum(s.bits[i]*(1 << (i-1)) for i in LinearIndices(s.bits))
-@generated function indexbasis(B::Type{<:Slater}, ix::Int)
+@generated function indexbasis(::Type{B}, ix::Int) where B<:Slater
     bits_size_expr = spbasis(B)<:TensorBasis ? :(fulldims(SPB)) : :(dim(SPB))
 
     quote
