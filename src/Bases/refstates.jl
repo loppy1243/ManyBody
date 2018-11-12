@@ -19,21 +19,21 @@ end # module RefStates
 spbasis(::Type{<:RefState{SPB}}) where SPB<:AbstractBasis = SPB
 spbasis(r::RefState) = spbasis(typeof(r))
 
-parts(ref::RefStates.Vacuum) = collect(spbasis(ref))
-parts(ref::RefStates.Fermi) = [p for p in spbasis(ref) if p.level > ref.fermilevel]
-const unocc = parts
+unocc(ref::RefStates.Vacuum) = collect(spbasis(ref))
+unocc(ref::RefStates.Fermi) = [p for p in spbasis(ref) if p.level > ref.fermilevel]
+const parts = unocc
 
-holes(ref::RefStates.Vacuum) = Vector{spbasis(ref)}()
-holes(ref::RefStates.Fermi) = [p for p in spbasis(ref) if p.level <= ref.fermilevel]
-const occ = holes
+occ(ref::RefStates.Vacuum) = Vector{spbasis(ref)}()
+occ(ref::RefStates.Fermi) = [p for p in spbasis(ref) if p.level <= ref.fermilevel]
+const holes = occ
 
-nparts(ref::RefState) = length(parts(ref))
-nparts(ref::RefStates.Vacuum) = dim(spbasis(ref))
-const n_unocc = nparts
+nunocc(ref::RefState) = length(parts(ref))
+nunocc(ref::RefStates.Vacuum) = dim(spbasis(ref))
+const nparts = nunocc
 
-nholes(::RefState) = length(holes(R))
-nholes(::RefStates.Vacuum) = 0
-const n_occ = nholes
+nocc(::RefState) = length(holes(R))
+nocc(::RefStates.Vacuum) = 0
+const nholes = nocc
 
 isocc(ref::RefState{SPB}, b::SPB) where SPB<:AbstractBasis = b in holes(ref)
 isocc(ref::RefState, b::AbstractBasis) = isocc(ref, convert(spbasis(ref), b))
