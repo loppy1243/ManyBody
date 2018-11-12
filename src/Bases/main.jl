@@ -27,7 +27,7 @@ function Base.convert(::Type{Array{T, N}}, b::TensorBasis{N}) where {T, N}
 end
 function Base.convert(::Type{Vector{T}}, b::AbstractBasis) where T
     ret = zeros(T, dim(typeof(b)))
-    ret[linearindex[b]] = oneunit(T)
+    ret[linearindex(b)] = oneunit(T)
 
     ret
 end
