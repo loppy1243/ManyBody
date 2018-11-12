@@ -73,7 +73,7 @@ macro defSub(f, ty_expr::Expr)
     subindexmap_expr = add_where(:(Bases.subindexmap(::Type{$new_ty_esc})))
 
     quote
-        let IXMAP = _makeixmap($f_esc, $base_ty_esc)
+        let IXMAP = _makeixmap($(esc(f)), $base_ty_esc)
             struct $subbasis_ty_esc end
             global const $new_ty_esc = Sub{$base_ty_esc, ndims(IXMAP), $subbasis_ty_esc}
 
