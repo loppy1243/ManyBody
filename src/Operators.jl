@@ -35,6 +35,14 @@ tabulate(f, T::Type, BL, BR) = tabulate(f, Array{T}, BL, BR)
         ret
     end
 end
+function tabulate(f, A::Type{<:Matrix}, BL::Type{<:AbstractBasis}, BR::Type{<:AbstractBasis})
+    ret = similar(A, dim(BL), dim(B))
+    for (bl, br) in Iterator.product(BL, BR)
+        ret[linearindex(bl), linearindex(br)] = f(bl, br)
+    end
+    
+    ret
+end
 
 struct RaiseOp{SP<:AbstractBasis}
     state::SP
