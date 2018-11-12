@@ -1,12 +1,12 @@
 _s(s) = getfield(s, :_state)
 
-struct Sub{B<:TensorBasis, M, T} <: TensorBasis{M}
+struct Sub{B<:AbstractBasis, T} <: AbstractBasis
     _state::B
 
-    function Sub{B, M, T}(b::B) where {B<:TensorBasis, M, T}
+    function Sub{B, T}(b::B) where {B<:AbstractBasis, T}
         @assert isdefined(Bases.:subindexmap) #=
-             =# && hasmethod(subindexmap, Tuple{Type{Sub{B, M, T}}})
-        @assert findfirst(subindexmap(Sub{B, M, T}), index(b)) !== nothing
+             =# && hasmethod(subindexmap, Tuple{Type{Sub{B, T}}})
+        @assert findfirst(subindexmap(Sub{B, T}), index(b)) !== nothing
 
         new(b)
     end
@@ -16,6 +16,9 @@ Base.getproperty(s::Sub, prop::Symbol) = Base.getproperty(_s(s), prop)
 superbasis(s::Sub{B}) where B<:TensorBasis = B
 supbasis(s::Sub) = superbasis(s)
 supbasis(s::Sub{<:Sub}) = supbasis(superbasis(B))
+superindex(s::Sub) = index(_s(s))
+supindex(s::Sub) = superindex(s)
+supindex(s::Sub{<:Sub}) = supindex(superindex(s))
 
 convert(::Type{B}, s::Sub{B}) where B<:TensorBasis = _s(s)
 convert(B::Type{<:TensorBasis}, s::Sub) = convert(B, _s(s))
@@ -75,7 +78,7 @@ macro defSub(f, ty_expr::Expr)
     quote
         let IXMAP = _makeixmap($(esc(f)), $base_ty_esc)
             struct $subbasis_ty_esc end
-            global const $new_ty_esc = Sub{$base_ty_esc, ndims(IXMAP), $subbasis_ty_esc}
+            global const $new_ty_esc = Sub{$base_ty_esc, $subbasis_ty_esc}
 
             $subindexmap_expr = IXMAP
         end
@@ -84,7 +87,7 @@ end
 
 function _makeixmap(f, B)
     N = rank(B)
-    mask = map(f, eachindex(B))
+    mask = map(f, B)
 
     sizes = []
     for d = 1:N
