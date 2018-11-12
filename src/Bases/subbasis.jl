@@ -25,15 +25,6 @@ Base.:(==)(x::Sub, y::Sub) = _s(x) == _s(y)
 Base.:(==)(x::TensorBasis, y::Sub) = x == _s(y)
 Base.:(==)(x::Sub, y::TensorBasis) = _s(x) == y
 
-## Example
-#@defSub Paired{P, L} <: Slater{Pairing{L}} do s
-#    SP = Pairing{L}
-#
-#    P == count(findall(s.occ)) do I
-#        s.occ[flipspin(SP[I])]
-#    end
-#end
-
 fulldims(B::Type{<:Sub}) = map(lastindex, axes(subindexmap(B)))
 # Could store an inverse subindexmap as well.
 index(b::Sub) = findfirst(==(index(_s(b))), subindexmap(typeof(b)))

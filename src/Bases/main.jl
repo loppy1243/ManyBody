@@ -46,4 +46,13 @@ include("subbasis.jl")
 include("product.jl")
 include("slater.jl")
 include("refstates.jl")
+
+@defSub Paired{P, L} <: Slater{Pairing{L}} do s
+    SP = Pairing{L}
+
+    P == count(findall(s.occ)) do I
+        s.occ[flipspin(SP[I])]
+    end
+end
+
 end # module States
