@@ -23,6 +23,8 @@ dim(B::Type{<:TensorBasis}) = prod(fulldims(B))
 #fulldims(B::Type{<:Basis}) = (dim(B),)
 
 Base.:(==)(x::B, y::B) where B<:AbstractBasis = index(x) == index(y)
+Base.in(::B, ::Type{B}) where B<:AbstractBasis = true
+Base.in(::AbstractBasis, ::Type{<:AbstractBasis}) = false
 
 function Base.convert(::Type{Array{T, N}}, b::TensorBasis{N}) where {T, N}
     ret = zeros(T, fulldims(typeof(b)))
