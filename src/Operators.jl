@@ -1,5 +1,6 @@
 @reexport module Operators
 export tabulate, normord, applyop, applyop!
+using ..ManyBody
 
 ### Tabulation
 ##############################################################################################
@@ -104,8 +105,7 @@ end
 
 _A(p::AbstractBasis) = LowerOp(p)
 _A(p::Raised{<:AbstractBasis}) = RaiseOp(p.val)
-@generated function _A(sps::Vararg{Union{T, Raised{T}}}) where
-                      {B<:AbstractBasis, T<:Bases.Rep{B}}
+@generated function _A(sps::Vararg{Union{B, Raised{B}}}) where B<:AbstractBasis
     args = map(enumerate(sps)) do x
         i, U = x
         if U <: Raised
