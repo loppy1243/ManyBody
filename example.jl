@@ -35,4 +35,3 @@ H(g) = f(g) + V(g)
 main() = tabulate(H(1.0), Float64, MBBASIS, MBBASIS)
 
 end # module Exec
-Exec.main()
