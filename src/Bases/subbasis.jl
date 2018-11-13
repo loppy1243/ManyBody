@@ -33,15 +33,19 @@ Base.:(==)(x::Sub, y::TensorBasis) = _s(x) == y
 Base.in(x, SB::Type{<:Sub}) = convert(superbasis(SB), x) in SB
 
 let IXMAPS=Dict{Type{Sub}, Union{Vector{Int}, Vector{CartesianIndex}}}
-    function Bases.subindexmap(B::Sub)
+    global subindexmap
+    function subindexmap(SB::Sub)
+        if !haskey(IXMAPS, SB)
+            IXMAPS[SB] = [index(b) for b in superbasis(SB) if b in SB]
+        end
+
+        IXMAPS[SB]
     end
 end
 
-dim(SB::Type{<:Sub}) = count(b in SB for b in superbasis(SB))
-function index(sb::Sub)
-end
-indexbasis(SB::Type{<:Sub}, i) =
-    
+dim(SB::Type{<:Sub}) = length(subindexmap(SB))
+index(sb::Sub) = findfirst(==(_s(sb)), subindexmap(typeof(sb)))
+indexbasis(SB::Type{<:Sub}, i) = subindexmap(SB)[i]
 
 macro defSub(f, ty_expr::Expr)
     get_tys(s::Symbol) = [s]
