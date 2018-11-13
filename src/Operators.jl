@@ -92,7 +92,7 @@ struct Raised{T}; val::T end
 
 macro A(p_exprs...)
     raised_exprs = map(p_expr) do p_expr
-        if p_expr isa Expr && p_expr.head == :'
+        if p_expr isa Expr && p_expr.head == Symbol("'")
             :(Raised($(p_expr.args[1])))
         else
             p_expr
