@@ -17,12 +17,12 @@ using ManyBody
 #    end |> string
 #end
 
-with_logger(ConsoleLogger(stdout, Logging.Info)) do
-    for file in readdir(@__DIR__)
-        file == basename(@__FILE__) && continue
-        include(file)
-    end
+for file in readdir(@__DIR__)
+    file == basename(@__FILE__) && continue
+    include(file)
+end
 
+with_logger(ConsoleLogger(stdout, Logging.Info)) do
     rlapplytest()
     normordtest()
     pairingtest(g_samples=5, atol=1e-5)
