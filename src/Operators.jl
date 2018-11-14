@@ -21,8 +21,9 @@ tabulate_rindices(A, B) = tabulate_indices(A, B)
 tabulate_indices(::Type{<:AbstractArray}, B) = CartesianIndices(B)
 tabulate_indices(::Type{<:AbstractMatrix}, B) = LinearIndices(B)
 
-tabulate(f, T, B) = tabulate(f, T, B, B)
-tabulate(f, T::Type, BL, BR) = tabulate(f, Array{T}, BL, BR)
+tabulate(f, T::Type, B::Type{<:AbstractBasis}) = tabulate(f, T, B, B)
+tabulate(f, T::Type, BL::Type{<:AbstractBasis}, BR::Type{<:AbstractBasis}) =
+    tabulate(f, Array{T}, BL, BR)
 @generated function tabulate(f, ::Type{A}, ::Type{BL}, ::Type{BR}) where
                  {A<:AbstractArray, BL<:AbstractBasis, BR<:AbstractBasis}
     lindices = tabulate_lindices(A, BL)
@@ -86,6 +87,24 @@ applyop!(op::RaiseLowerOp{SP}, b::Bases.Slater{SP}) where SP<:AbstractBasis =
 function applyop(op::RaiseLowerOp{SP}, b::Bases.Slater{SP}) where SP<:AbstractBasis
     ret = deepcopy(b)
     applyop!(op, ret)
+end
+
+function applyop!(op, b1, b2)
+    sgn, b2′ = applyop!(op, b2)
+    sgn*overlap(b1, b2′)
+end
+function applyop(op, b1, b2)
+    sgn, b2′ = applyop(op, b2)
+    sgn*overlap(b1, b2′)
+end
+
+function applyop!(op, T, b1, b2)
+    sgn, b2′ = applyop!(op, b2)
+    sgn*overlap(T, b1, b2′)
+end
+function applyop(op, T, b1, b2)
+    sgn, b2′ = applyop(op, b2)
+    sgn*overlap(T, b1, b2′)
 end
 
 struct Raised{T}; val::T end
