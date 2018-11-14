@@ -32,7 +32,7 @@ Base.:(==)(x::Sub, y::TensorBasis) = _s(x) == y
 
 Base.in(x, SB::Type{<:Sub}) = convert(superbasis(SB), x) in SB
 
-let IXMAPS=Dict{Type{Sub}, Union{Vector{Int}, Vector{CartesianIndex}}}
+let IXMAPS=Dict{Type{Sub}, Union{Vector{Int}, Vector{CartesianIndex}}}()
     global subindexmap
     function subindexmap(SB::Type{<:Sub})
         if !haskey(IXMAPS, SB)
