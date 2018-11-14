@@ -14,7 +14,7 @@ end
 ### TensorBasis methods
 ##############################################################################################
 fulldims(B::Type{<:Pairing}) = (nlevels(B), 2)
-index(sp::Pairing) = CartesianIndex(p.level, 1+Bool(p.spin))
+index(p::Pairing) = CartesianIndex(p.level, 1+Bool(p.spin))
 indexbasis(B::Type{<:Pairing}, level::Int, snum::Int) =
     B(level, Spin(Bool(snum-1)))
 
