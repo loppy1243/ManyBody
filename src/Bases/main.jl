@@ -57,8 +57,8 @@ include("slater.jl")
 @defSub Paired{P, L} <: Slater{Pairing{L}} begin s
     SP = Pairing{L}
 
-    P == count(findall(s.occ)) do I
-        s.occ[flipspin(SP[I])]
+    P == count(findall(s.bits)) do I
+        s.bits[flipspin(SP[I])]
     end
 end
 
