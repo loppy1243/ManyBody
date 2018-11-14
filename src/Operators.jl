@@ -100,7 +100,7 @@ macro A(p_exprs...)
         end
     end
 
-    :(_A($(raised_expr...)))
+    :(_A($(raised_exprs...)))
 end
 
 _A(p::AbstractBasis) = LowerOp(p)
