@@ -23,8 +23,8 @@ tabulate_indices(::Type{<:AbstractMatrix}, B) = LinearIndices(B)
 
 tabulate(f, T, B) = tabulate(f, T, B, B)
 tabulate(f, T::Type, BL, BR) = tabulate(f, Array{T}, BL, BR)
-@generated function tabulate(f, A::Type{<:AbstractArray}, ::Type{BL}, ::Type{BR}) where
-                 {BL<:AbstractBasis, BR<:AbstractBasis}
+@generated function tabulate(f, ::Type{A}, ::Type{BL}, ::Type{BR}) where
+                 {A<:AbstractArray, BL<:AbstractBasis, BR<:AbstractBasis}
     lindices = tabulate_lindices(A, BL)
     rindices = tabulate_rindices(A, BR)
     dims = (size(lindices)..., size(rindices)...)
