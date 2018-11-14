@@ -19,7 +19,7 @@ normordtest() = @testset "Normal Ordering" begin
     end
 
     @testset "Fermi{2}" begin
-        @debug "Testing normord wrt. Fermi{2}",
+        @debug "Testing normord wrt. Fermi{2}"
 
         Na_mat = tabulate(normord(RefStates.Fermi{SPBASIS}(2), a), Int, MBBASIS)
         correct_mat = tabulate(@A(s', p', q', r), Int, MBBasis)
