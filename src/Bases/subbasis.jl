@@ -34,7 +34,7 @@ Base.in(x, SB::Type{<:Sub}) = convert(superbasis(SB), x) in SB
 
 let IXMAPS=Dict{Type{Sub}, Union{Vector{Int}, Vector{CartesianIndex}}}
     global subindexmap
-    function subindexmap(SB::Sub)
+    function subindexmap(SB::Type{<:Sub})
         if !haskey(IXMAPS, SB)
             IXMAPS[SB] = [index(b) for b in superbasis(SB) if b in SB]
         end
