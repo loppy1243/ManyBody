@@ -27,9 +27,6 @@ module RefStates
     
     struct Vacuum{SPB<:AbstractBasis} <: RefState{SPB} end
     struct Fermi{SPB<:AbstractBasis} <: RefState{SPB}; fermilevel::Int end
-
-    Vacuum(SPB::Type{<:AbstractBasis}) = Vacuum{SPB}()
-    Fermi{SPB}(F::Int) where SPB<:AbstractBasis = Fermi{SPB}(F)
 end # module RefStates
 occ(ref::RefStates.Vacuum) = Vector{spbasis(ref)}()
 unocc(ref::RefStates.Vacuum) = collect(spbasis(ref))
