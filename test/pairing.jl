@@ -5,6 +5,8 @@ using ManyBody.Operators: @A
 #    nocc(b) == P && all(p -> p.level <= L, occ(b))
 #end
 
+const LEVEL_SPACING = 1
+
 _pairingH_direct(g, i, j) = if i == j
     [2, 4, 6, 6, 8, 10][i]*LEVEL_SPACING - g
 elseif i + j - 1 == 6
@@ -15,10 +17,9 @@ end
 pairingH_direct(g) = [_H(g, i, j) for i = 1:6, j = 1:6]
 
 pairingtest(; g_samples, atol) = @testset "Pairing Hamiltonian" begin
-    const LEVEL_SPACING = 1
-    const SPBASIS = Bases.Pairing{4}
-    const REFSTATE = RefStates.Fermi{SPBASIS}(2)
-    const MBBASIS = Bases.Paired{2, 4}
+    SPBASIS = Bases.Pairing{4}
+    REFSTATE = RefStates.Fermi{SPBASIS}(2)
+    MBBASIS = Bases.Paired{2, 4}
     
     f(g) = (X, Y) -> sum(spbasis(Y)) do p
         sgn, Y′ = @A(p', p)
