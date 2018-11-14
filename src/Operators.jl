@@ -1,5 +1,5 @@
 @reexport module Operators
-export tabulate, normord, applyop, applyop!
+export tabulate, tabulate!, normord, applyop, applyop!
 using ..ManyBody
 
 ### Tabulation
