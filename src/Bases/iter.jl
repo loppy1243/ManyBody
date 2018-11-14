@@ -9,5 +9,5 @@ function Base.iterate(B::Type{<:AbstractBasis}, st=(eachindex(B),))
     (x = iterate(st...)) === nothing && return nothing
     (I, inner_st) = x
 
-    (B[I], (itr, inner_st))
+    (B[I], (st[1], inner_st))
 end
