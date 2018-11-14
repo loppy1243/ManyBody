@@ -1,5 +1,31 @@
-Base.getindex(B::Type{<:AbstractBasis}, ixs...) = indexbasis(B, ixs...)
-Base.to_index(b::AbstractBasis) = index(b)
+#@generated function Base.getindex(B::Type{<:AbstractBasis}, ixs...)
+#    full_ixs = []
+#    for (i, T) in enumerate(ixs)
+#        if T <: CartesianIndex
+#            append!(full_ixs, [:(Tuple(ixs[$i])[$j]) for j = 1:length(T)])
+#        else
+#            push!(full_ixs, :(ixs[$i]))
+#        end
+#    end
+#
+#    :(indexbasis(B, $(full_ixs...)))
+#end
+function Base.getindex(B::Type{<:AbstractArray}, ixs...)
+    N = sum(map(length, ixs))
+    full_ixs = Vector{Int}(undef, N)
+    for (i, jxs) in enumerate(ixs)
+        for (j, jx) in enumerate(Bases.to_indices(B, jxs))
+            full_ixs[i+j-1] = jx
+        end
+    end
+
+    indexbasis(B, full_ixs...)
+end
+Bases.to_indices(::Type{<:AbstractBasis}, x) = (x,)
+Bases.to_indices(::Type{<:TensorBasis}, x::CartesianIndex) = Tuple(x)
+
+Base.to_indices(::Any, b::AbstractBasis) = (index(b),)
+Base.to_indices(::Any, b::TensorBasis) = Tuple(index(b))
 
 Base.eachindex(B::Type{<:AbstractBasis}) = LinearIndices(B)
 Base.firstindex(B::Type{<:AbstractBasis}) = 1
