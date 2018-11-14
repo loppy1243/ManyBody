@@ -33,19 +33,19 @@ flipspin(p::Pairing) = typeof(p)(p.level, flip(p.spin))
 nlevels(a::Pairing) = nlevels(typeof(a))
 nlevels(::Type{Pairing{L}}) where L = L
 
-Base.show(io::IO, x::Pairing) = print(io, level(x), spinup(spin(x)) ? "↑" : "↓")
+Base.show(io::IO, x::Pairing) = print(io, x.level, spinup(x.spin) ? "↑" : "↓")
 function Base.show(io::IO, ::MIME"text/plain", x::Pairing)
     L = nlevels(x)
     for i = L:-1:1
         print(io, lpad(i, ndigits(L)), "|  ")
-        if i == level(x)
-            if spindown(spin(x))
+        if i == x.level
+            if spindown(x.spin)
                 print(io, "↓  ")
             else
                 print(io, "o  ")
             end
 
-            if spinup(spin(x))
+            if spinup(x.spin)
                 println(io, "↑")
             else
                 println(io, "o")
