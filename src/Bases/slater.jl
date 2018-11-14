@@ -45,7 +45,7 @@ dim(B::Type{<:Slater}) = 2^dim(spbasis(B)) - 1
 index(s::Slater) = sum(s.bits[i]*(1 << (i-1)) for i in LinearIndices(s.bits))
 @generated function indexbasis(::Type{B}, ix::Int) where B<:Slater
     SPB = spbasis(B)
-    bits_size_expr = spbasis(SPB)<:TensorBasis ? fulldims(SPB) : dim(SPB)
+    bits_size_expr = SPB<:TensorBasis ? fulldims(SPB) : dim(SPB)
 
     quote
         bits = falses($bits_size_expr)
