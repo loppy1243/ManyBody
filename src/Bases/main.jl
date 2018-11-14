@@ -54,7 +54,7 @@ include("subbasis.jl")
 include("product.jl")
 include("slater.jl")
 
-@defSub(Paired{P, L} <: Slater{Pairing{L}}) do s
+@defSub Paired{P, L} <: Slater{Pairing{L}} begin s
     SP = Pairing{L}
 
     P == count(findall(s.occ)) do I

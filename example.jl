@@ -3,13 +3,13 @@ module Exec
 using ManyBody
 using ManyBody.Operators: @A
 
-Bases.@defSub(NPairing{L, P} <: Bases.Slater{Bases.Pairing{L}}) do b
+Bases.@defSub NPairing{L, P} <: Bases.Slater{Bases.Pairing{L}} begin b
     nocc(b) == P && all(p -> p.level <= L, occ(b))
 end
 
 const LEVEL_SPACING = 1
 const SPBASIS = Bases.Pairing{4}
-const REFSTATE = RefStates.Fermi{SPBASIS, 2}
+const REFSTATE = RefStates.Fermi{SPBASIS}(2)
 const MBBASIS = Bases.Paired{2, 4}
 #const MBBASIS = NPairing{4, 4}
 

@@ -47,7 +47,7 @@ dim(SB::Type{<:Sub}) = length(subindexmap(SB))
 index(sb::Sub) = findfirst(==(_s(sb)), subindexmap(typeof(sb)))
 indexbasis(SB::Type{<:Sub}, i) = subindexmap(SB)[i]
 
-macro defSub(f, ty_expr::Expr)
+macro defSub(ty_expr::Expr, body_expr::Expr)
     get_tys(s::Symbol) = [s]
     get_tys(x::Expr) = if x.head == :curly
         reduce(vcat, map(get_tys, x.args[2:end]))
@@ -68,6 +68,9 @@ macro defSub(f, ty_expr::Expr)
     end
 
     @assert ty_expr.head == :(<:)
+    @assert body_expr.head == :block #=
+         =# && (body_expr.args[2] isa Symbol #=
+             =# || body_expr.args[2] isa Expr && bod_expr.args[2].head == :tuple)
 
     name(x::Symbol) = x
     name(x::Expr) = name(x.args[1])
@@ -88,12 +91,12 @@ macro defSub(f, ty_expr::Expr)
 
     in_expr(b) = add_where(:(Base.in($b::$base_ty_esc, ::Type{$new_ty_esc})))
 
-    clos_param(s::Symbol) = s
-    clos_param(s::Expr) = (@assert(s.head === :tuple && length(s.args) == 1); s.args[1])
+    func_param_esc = esc(body_expr.args[2])
+    body_esc = esc(Expr(:block, body_expr.args[3:end]...))
 
     quote
         struct $subbasis_ty_esc end
         global const $new_ty_esc = Sub{$base_ty_esc, $subbasis_ty_esc}
-        $(in_expr(clos_param(f.args[1]))) = $(esc(f.args[2]))
+        $(in_expr(func_param_esc)) = $body_esc
     end
 end
