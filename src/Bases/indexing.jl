@@ -21,8 +21,8 @@ function Base.getindex(B::Type{<:AbstractArray}, ixs...)
 
     indexbasis(B, full_ixs...)
 end
-Bases.to_indices(::Type{<:AbstractBasis}, x) = (x,)
-Bases.to_indices(::Type{<:TensorBasis}, x::CartesianIndex) = Tuple(x)
+to_indices(::Type{<:AbstractBasis}, x) = (x,)
+to_indices(::Type{<:TensorBasis}, x::CartesianIndex) = Tuple(x)
 
 Base.to_indices(::Any, b::AbstractBasis) = (index(b),)
 Base.to_indices(::Any, b::TensorBasis) = Tuple(index(b))
