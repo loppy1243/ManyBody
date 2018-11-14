@@ -14,18 +14,19 @@ function Base.getindex(B::Type{<:AbstractArray}, ixs...)
     N = sum(map(length, ixs))
     full_ixs = Vector{Int}(undef, N)
     for (i, jxs) in enumerate(ixs)
-        for (j, jx) in enumerate(Bases.to_indices(B, jxs))
+        for (j, jx) in enumerate(#=Bases.=#to_indices(B, jxs))
             full_ixs[i+j-1] = jx
         end
     end
 
     indexbasis(B, full_ixs...)
 end
-to_indices(::Type{<:AbstractBasis}, x) = (x,)
-to_indices(::Type{<:TensorBasis}, x::CartesianIndex) = Tuple(x)
+#=Bases.=#to_indices(::Type{<:AbstractBasis}, x) = (x,)
+#=Bases.=#to_indices(::Type{<:TensorBasis}, x::CartesianIndex) = Tuple(x)
 
-Base.to_indices(::Any, b::AbstractBasis) = (index(b),)
-Base.to_indices(::Any, b::TensorBasis) = Tuple(index(b))
+Base.to_index(::Any, b::AbstractBasis) = index(b)
+Base.to_indices(A, x::Tuple{<:TensorBasis, Vararg{Any}}) =
+    Base.to_indices(A, (Tuple(index(x[1]))..., tail(x)...))
 
 Base.eachindex(B::Type{<:AbstractBasis}) = LinearIndices(B)
 Base.firstindex(B::Type{<:AbstractBasis}) = 1
