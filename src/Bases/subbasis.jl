@@ -22,8 +22,8 @@ superindex(s::Sub) = index(_s(s))
 supindex(s::Sub) = superindex(s)
 supindex(s::Sub{<:Sub}) = supindex(superindex(s))
 
-convert(::Type{B}, s::Sub{B}) where B<:TensorBasis = _s(s)
-convert(B::Type{<:TensorBasis}, s::Sub) = convert(B, _s(s))
+Base.convert(::Type{B}, s::Sub{B}) where B<:TensorBasis = _s(s)
+Base.convert(B::Type{<:TensorBasis}, s::Sub) = convert(B, _s(s))
 B(s::Sub) where B<:TensorBasis = convert(B, s)
 
 Base.:(==)(x::Sub, y::Sub) = _s(x) == _s(y)
