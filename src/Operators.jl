@@ -1,6 +1,8 @@
 @reexport module Operators
 export tabulate, tabulate!, normord, applyop, applyop!
 using ..ManyBody
+using Combinatorics: levicivita
+using Base.Cartesian: @ncall
 
 ### Tabulation
 ##############################################################################################
@@ -8,13 +10,14 @@ function tabulate!(f, A::AbstractArray, BL::Type{<:AbstractBasis}, BR::Type{<:Ab
                   ;leftindices=nothing, rightindices=nothing)
     Il = leftindices === nothing ? tabulate_lindices(typeof(A), BL) : leftindices
     Ir = rightindices === nothing ? tabulate_rindices(typeof(A), BR) : rightindices
+
     for (bl, br) in Iterators.product(BL, BR)
         _tabulate!_kernel(A, Il, bl, Ir, br, f)
     end
 
     A
 end
-_tabulate!_kernel(A, Il, bl, Ir, br, f) = A[Il[bl], Ir[br]] = f
+_tabulate!_kernel(A, Il, bl, Ir, br, f) = A[Il[bl], Ir[br]] = f(bl, br)
 
 tabulate_lindices(A, B) = tabulate_indices(A, B)
 tabulate_rindices(A, B) = tabulate_indices(A, B)
@@ -24,13 +27,13 @@ tabulate_indices(::Type{<:AbstractMatrix}, B) = LinearIndices(B)
 tabulate(f, T::Type, B::Type{<:AbstractBasis}) = tabulate(f, T, B, B)
 tabulate(f, T::Type, BL::Type{<:AbstractBasis}, BR::Type{<:AbstractBasis}) =
     tabulate(f, Array{T}, BL, BR)
-@generated function tabulate(f, ::Type{A}, ::Type{BL}, ::Type{BR}) where
-                 {A<:AbstractArray, BL<:AbstractBasis, BR<:AbstractBasis}
+function tabulate(f, A::Type{<:AbstractArray},
+                  BL::Type{<:AbstractBasis}, BR::Type{<:AbstractBasis})
     lindices = tabulate_lindices(A, BL)
-    rindices = tabulate_rindices(A, BR)
+    rindices = tabulate_rindices(A, BL)
     dims = (size(lindices)..., size(rindices)...)
 
-    :(tabulate!(f, similar(A, $dims), BL, BR; leftindices=lindices, rightindices=rindices))
+    tabulate!(f, similar(A, dims), BL, BR; leftindices=lindices, rightindices=rindices)
 end
 
 ### Raising and Lowering Operators
@@ -51,64 +54,89 @@ end
 RaiseLowerOp{SP}(itr) where SP<:AbstractBasis = RaiseLowerOp(collect(RLOp{SP}, itr))
 RaiseLowerOp(rlops::Vector{RLOp{SP}}) where SP<:AbstractBasis = RaiseLowerOp{SP}(rlops)
 
+Base.:(==)(op1::O, op2::O) where O<:RLOp = op1.state == op2.state
+Base.:(==)(op1::RLOp, op2::RLOp) = false
+
 const AnyRLOp{SP<:AbstractBasis} = Union{RaiseLowerOp{SP}, RaiseOp{SP}, LowerOp{SP}}
+spbasis(::Type{<:AnyRLOp{SP}}) where SP<:AbstractBasis = SP
+spbasis(a::AnyRLOp) = spbasis(typeof(a))
 
-(op::RaiseOp)(args...) = applyop(op, args...)
-(op::LowerOp)(args...) = applyop(op, args...)
-(op::RaiseLowerOp)(args...) = applyop(op, args...)
+@generated (op::RaiseOp)(args::Vararg{Any, N}) where N =
+    :(@ncall($N, applyop, op, i -> args[i]))
+@generated (op::LowerOp)(args::Vararg{Any, N}) where N =
+    :(@ncall($N, applyop, op, i -> args[i]))
+@generated (op::RaiseLowerOp)(args::Vararg{Any, N}) where N =
+    :(@ncall($N, applyop, op, i -> args[i]))
 
-function applyop!(op::RaiseOp{SP}, b::Bases.Slater{SP}) where SP<:AbstractBasis
-    sgn = create!(b, op.state)
-    if sgn > 0
-        (1, b)
-    elseif sgn == 0
-        (0, b)
-    else
-        (-1, b)
+_apply_rlop!(op::RaiseOp{SP}, b::Bases.Slater{SP}) where SP<:AbstractBasis = create!(b, op.state)
+_apply_rlop!(op::LowerOp{SP}, b::Bases.Slater{SP}) where SP<:AbstractBasis = annihil!(b, op.state)
+_apply_rlop(op::RaiseOp{SP}, b::Bases.Slater{SP}) where SP<:AbstractBasis = create(b, op.state)
+_apply_rlop(op::LowerOp{SP}, b::Bases.Slater{SP}) where SP<:AbstractBasis = annihil(b, op.state)
+
+for (opapp, app) in zip((:applyop!, :applyop), (:_apply_rlop!, :_apply_rlop))
+    @eval function $opapp(op::RLOp{SP}, b::Bases.Slater{SP}) where SP<:AbstractBasis
+        sgn = $app(op, b)[1]
+        (sgn, b)
     end
 end
-function applyop!(op::LowerOp{SP}, b::Bases.Slater{SP}) where SP<:AbstractBasis
-    sgn = annihil!(b, op.state)
-    if sgn > 0
-        (1, b)
-    elseif sgn == 0
-        (0, b)
-    else
-        (-1, b)
+
+function applyop!(op::RaiseLowerOp{SP}, b::Bases.Slater{SP}) where SP<:AbstractBasis
+    sgn = 1
+    for rlop in op.rlops
+        sgn *= applyop!(rlop, b)[1]
+        if iszero(sgn)
+            return (sgn, b)
+        end
     end
+
+    (sgn, b)
 end
-function applyop(op::RLOp{SP}, b::Bases.Slater{SP}) where SP<:AbstractBasis
-    ret = deepcopy(b)
-    applyop!(op, ret)
+applyop(op::RaiseLowerOp{SP}, b::Bases.Slater{SP}) where SP<:AbstractBasis =
+    applyop!(op, copy(b))
+
+### Matrix elements
+##############################################################################################
+@generated applyop(op::RLOp{SP}, b1::Bases.Slater{SP}, b2::Bases.Slater{SP}) where
+                   SP<:AbstractBasis = quote
+    sgn = acsign(b2, op.state)
+    sgn*$(op<:RaiseOp ? :(~b2.bits[op.state]) : :(b2.bits[op.state]))
 end
 
-applyop!(op::RaiseLowerOp{SP}, b::Bases.Slater{SP}) where SP<:AbstractBasis =
-    foldr(applyop!, op.rlops, init=b)
-function applyop(op::RaiseLowerOp{SP}, b::Bases.Slater{SP}) where SP<:AbstractBasis
-    ret = deepcopy(b)
-    applyop!(op, ret)
+function applyop(op::RaiseLowerOp{SP}, b1::Bases.Slater{SP}, b2::Bases.Slater{SP}) where
+                SP<:AbstractBasis
+    true_bits = BitSet()
+    false_bits = BitSet()
+
+    LI = LinearIndices(SP)
+    ixs = Int[LI[x.state] for x in op.rlops]
+
+    sgn = 1
+    for (k, (i, rlop)) in zip(ixs, op.rlops) |> enumerate
+        sgn′, bit = _apply_rlop!(rlop, b2)
+        if !(i in true_bits || i in false_bits)
+            bit ? union!(true_bits,  i) : union!(false_bits, i)
+        end
+        sgn *= sgn′
+#        # If we break here, then we have to account for that in true_bits and false_bits
+#        if iszero(sgn)
+#            resize!(ixs, k)
+#            break
+#        end
+    end
+
+    ret = iszero(sgn) ? sgn : sgn*overlap(b1, b2)
+
+    for (i, rlop) in zip(ixs, op.rlops)
+        # Note that i *must* be in one or the other
+        b2.bits[i] = (i in true_bits) || ~(i in false_bits)
+    end
+
+    ret
 end
 
-function applyop!(op, b1, b2)
-    sgn, b2′ = applyop!(op, b2)
-    sgn*overlap(b1, b2′)
-end
-function applyop(op, b1, b2)
-    sgn, b2′ = applyop(op, b2)
-    sgn*overlap(b1, b2′)
-end
-
-function applyop!(op, T, b1, b2)
-    sgn, b2′ = applyop!(op, b2)
-    sgn*overlap(T, b1, b2′)
-end
-function applyop(op, T, b1, b2)
-    sgn, b2′ = applyop(op, b2)
-    sgn*overlap(T, b1, b2′)
-end
-
+### @A syntax
+##############################################################################################
 struct Raised{T}; val::T end
-↑(x) = Raised(x)
 
 macro A(p_exprs...)
     raised_exprs = map(p_exprs) do p_expr
@@ -124,20 +152,16 @@ end
 
 _A(p::AbstractBasis) = LowerOp(p)
 _A(p::Raised{<:AbstractBasis}) = RaiseOp(p.val)
-@generated function _A(sps::Vararg{Union{B, Raised{B}}}) where B<:AbstractBasis
-    args = map(enumerate(sps)) do x
-        i, U = x
-        if U <: Raised
-            :(RaiseOp(sps[$i].val))
-        else
-            :(LowerOp(sps[$i]))
-        end
-    end
+function _A(sps::Vararg{Union{B, Raised{B}}}) where B<:AbstractBasis
+    rl(x::B) = LowerOp(x)
+    rl(x::Raised{B}) = RaiseOp(x.val)
 
-    :(RaiseLowerOp{B}(RLOp{B}[$(args...)]))
+    RaiseLowerOp{B}(reverse(map(rl, sps)))
 end
 
-normord(a::RaiseLowerOp) = normord(RefStates.Vacuum(spbasis(a)), a)
+##############################################################################################
+##############################################################################################
+normord(a::RaiseLowerOp) = normord(RefStates.Vacuum{spbasis(a)}(), a)
 function normord(R::RefState{B}, a::RaiseLowerOp{B}) where B<:AbstractBasis
     function comp(a, b)
         if a[2] && b[2]

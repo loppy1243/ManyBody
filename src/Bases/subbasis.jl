@@ -1,42 +1,52 @@
-_s(s) = getfield(s, :_state)
-
 struct Sub{B<:AbstractBasis, T} <: AbstractBasis
     _state::B
 
     function Sub{B, T}(b::B) where {B<:AbstractBasis, T}
+        isabstracttype(B) && @warn "Bases.Sub{B} defined with abstract B!"
         @assert hasmethod(Base.in, Tuple{B, Type{Sub{B, T}}})
         @assert b in Sub{B, T}
 
         new(b)
     end
 end
-Base.getproperty(s::Sub, prop::Symbol) = Base.getproperty(_s(s), prop)
+Base.getproperty(s::Sub, prop::Symbol) = Base.getproperty(superelem(s), prop)
 
+superbasis(s::Type{<:AbstractBasis}) = s
 superbasis(s::Type{<:Sub{B}}) where B<:AbstractBasis = B
-superbasis(s::Sub) = superbasis(typeof(s))
+superbasis(s::AbstractBasis) = superbasis(typeof(s))
+supbasis(s::Type{<:AbstractBasis}) = s
 supbasis(s::Type{<:Sub}) = superbasis(s)
 supbasis(s::Type{<:Sub{<:Sub}}) = supbasis(superbasis(B))
-supbasis(s::Sub) = supbasis(typeof(s))
+supbasis(s::AbstractBasis) = supbasis(typeof(s))
 
-superindex(s::Sub) = index(_s(s))
+superindex(s::AbstractBasis) = index(s)
+superindex(s::Sub) = index(superelem(s))
+supindex(s::AbstractBasis) = index(s)
 supindex(s::Sub) = superindex(s)
 supindex(s::Sub{<:Sub}) = supindex(superindex(s))
 
-Base.convert(::Type{B}, s::Sub{B}) where B<:TensorBasis = _s(s)
-Base.convert(B::Type{<:TensorBasis}, s::Sub) = convert(B, _s(s))
-B(s::Sub) where B<:TensorBasis = convert(B, s)
+superelem(s::AbstractBasis) = s
+superelem(s::Sub) = getfield(s, :_state)
+supelem(s::AbstractBasis) = s
+supelem(s::Sub) = superelem(s)
+supelem(s::Sub{<:Sub}) = supelem(superelem(s))
 
-Base.:(==)(x::Sub, y::Sub) = _s(x) == _s(y)
-Base.:(==)(x::TensorBasis, y::Sub) = x == _s(y)
-Base.:(==)(x::Sub, y::TensorBasis) = _s(x) == y
+Base.convert(::Type{B}, s::B) where B<:Sub = s
+Base.convert(::Type{B}, s::Sub{B}) where B<:AbstractBasis = superelem(s)
+Base.convert(B::Type{<:AbstractBasis}, s::Sub) = convert(B, superelem(s))
+B(s::Sub) where B<:AbstractBasis = convert(B, s)
+
+Base.:(==)(x::Sub, y::Sub) = supelem(x) == supelem(y)
+Base.:(==)(x::AbstractBasis, y::Sub) = x == supelem(y)
+Base.:(==)(x::Sub, y::AbstractBasis) = supelem(x) == y
 
 Base.in(x, SB::Type{<:Sub}) = convert(superbasis(SB), x) in SB
 
-let IXMAPS=Dict{Type{Sub}, Union{Vector{Int}, Vector{CartesianIndex}}}()
+let IXMAPS=Dict{Any, Any}()
     global subindexmap
     function subindexmap(SB::Type{<:Sub})
         if !haskey(IXMAPS, SB)
-            IXMAPS[SB] = [index(b) for b in superbasis(SB) if b in SB]
+            IXMAPS[SB] = [index(b) for b in supbasis(SB) if b in SB]
         end
 
         IXMAPS[SB]
@@ -44,11 +54,11 @@ let IXMAPS=Dict{Type{Sub}, Union{Vector{Int}, Vector{CartesianIndex}}}()
 end
 
 dim(SB::Type{<:Sub}) = length(subindexmap(SB))
-index(sb::Sub) = findfirst(==(_s(sb)), subindexmap(typeof(sb)))
-indexbasis(SB::Type{<:Sub}, i) = subindexmap(SB)[i]
+index(sb::Sub) = findfirst(==(supindex(sb)), subindexmap(typeof(sb)))
+indexbasis(SB::Type{<:Sub}, i) = SB(indexer(supbasis(SB))[subindexmap(SB)[i]])
 
 macro defSub(ty_expr::Expr, body_expr::Expr)
-    get_tys(s::Symbol) = [s]
+    get_tys(s) = [s]
     get_tys(x::Expr) = if x.head == :curly
         reduce(vcat, map(get_tys, x.args[2:end]))
     else
@@ -99,4 +109,19 @@ macro defSub(ty_expr::Expr, body_expr::Expr)
         global const $new_ty_esc = Sub{$base_ty_esc, $subbasis_ty_esc}
         $(in_expr(func_param_esc)) = $body_esc
     end
+end
+
+_depth(x::Type{<:Sub}, cnt) = _depth(superbasis(x), cnt+1)
+_depth(x::Type{<:AbstractBasis}, cnt) = cnt
+_depth(x::AbstractBasis) = _depth(typeof(x), 0)
+Base.show(io::IO, x::Sub) = print(io, "Sub<$(_depth(x))>($(supelem(x)))")
+
+function Base.show(io::IO, mime::MIME"text/plain", x::Sub)
+    d = _depth(x)
+    if d == 1
+        println(io, typeof(x))
+    else
+        println(io, "Depth $(_depth(x)) $(typeof(x))")
+    end
+    show(io, mime, supelem(x))
 end

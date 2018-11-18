@@ -25,5 +25,5 @@ end
 with_logger(ConsoleLogger(stdout, Logging.Info)) do
     rlapplytest()
     normordtest()
-    pairingtest(g_samples=5, atol=1e-5)
+    pairingtest(g_samples=5, atol=1e-5, mbbasis=Bases.Paired{4, 4})
 end

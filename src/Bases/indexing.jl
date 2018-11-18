@@ -1,44 +1,48 @@
-#@generated function Base.getindex(B::Type{<:AbstractBasis}, ixs...)
-#    full_ixs = []
-#    for (i, T) in enumerate(ixs)
-#        if T <: CartesianIndex
-#            append!(full_ixs, [:(Tuple(ixs[$i])[$j]) for j = 1:length(T)])
-#        else
-#            push!(full_ixs, :(ixs[$i]))
-#        end
-#    end
-#
-#    :(indexbasis(B, $(full_ixs...)))
-#end
-function Base.getindex(B::Type{<:AbstractArray}, ixs...)
-    N = sum(map(length, ixs))
-    full_ixs = Vector{Int}(undef, N)
-    for (i, jxs) in enumerate(ixs)
-        for (j, jx) in enumerate(#=Bases.=#to_indices(B, jxs))
-            full_ixs[i+j-1] = jx
-        end
-    end
+using Base.Cartesian: @ncall
 
-    indexbasis(B, full_ixs...)
-end
-#=Bases.=#to_indices(::Type{<:AbstractBasis}, x) = (x,)
-#=Bases.=#to_indices(::Type{<:TensorBasis}, x::CartesianIndex) = Tuple(x)
+struct Indexer{B<:AbstractBasis, N} <: AbstractArray{B, N} end
+Indexer{B}() where B<:TensorBasis = Indexer{B, rank(B)}()
+Indexer{B}() where B<:AbstractBasis = Indexer{B, 1}()
+
+indexer(B::Type{<:AbstractBasis}) = Indexer{B}()
+_basis(::Type{<:Indexer{B}}) where B<:AbstractBasis = B
+_basis(BI::Indexer) = _basis(typeof(BI))
+
+## Fed up with this shit...
+Base.show(io::IO, x::Indexer) = show(io, collect(x))
+Base.show(io::IO, mime::MIME"text/plain", x::Indexer) = show(io, mime, collect(x))
+
+indexbasis(BI::Indexer, ixs::Int...) = indexbasis(_basis(BI), ixs...)
+
+Base.size(BI::Indexer{<:TensorBasis}) = fulldims(_basis(BI))
+Base.size(BI::Indexer{<:AbstractBasis}) = (dim(_basis(BI)),)
+IndexStyle(::Type{<:Indexer{<:TensorBasis}}) = Base.IndexCartesian()
+IndexStyle(::Type{<:Indexer{<:AbstractBasis}}) = Base.IndexLinear()
+
+Base.getindex(BI::Indexer, ixs...) = indexbasis(_basis(BI), Base.to_indices(BI, ixs)...) 
 
 Base.to_index(::Any, b::AbstractBasis) = index(b)
 Base.to_indices(A, x::Tuple{<:TensorBasis, Vararg{Any}}) =
-    Base.to_indices(A, (Tuple(index(x[1]))..., tail(x)...))
+    (Tuple(index(x[1]))..., Base.to_indices(A, Base.tail(x))...)
 
+Base.eachindex(BI::Indexer) = eachindex(_basis(BI))
 Base.eachindex(B::Type{<:AbstractBasis}) = LinearIndices(B)
-Base.firstindex(B::Type{<:AbstractBasis}) = 1
-Base.lastindex(B::Type{<:AbstractBasis}) = dim(B)
-
 Base.eachindex(B::Type{<:TensorBasis}) = CartesianIndices(B)
+
+Base.firstindex(BI::Indexer) = firstindex(_basis(BI))
+Base.firstindex(B::Type{<:AbstractBasis}) = 1
 Base.firstindex(B::Type{<:TensorBasis}) = CartesianIndex(ones(Int, rank(B))...)
+
+Base.lastindex(BI::Indexer) = lastindex(_basis(BI))
+Base.lastindex(B::Type{<:AbstractBasis}) = dim(B)
 Base.lastindex(B::Type{<:TensorBasis}) = CartesianIndex(fulldims(B))
 
+Base.CartesianIndices(BI::Indexer) = CartesianIndices(_basis(BI))
 Base.CartesianIndices(B::Type{<:AbstractBasis}) = CartesianIndices((dim(B),))
-Base.LinearIndices(B::Type{<:AbstractBasis}) = LinearIndices((dim(B),))
 Base.CartesianIndices(B::Type{<:TensorBasis}) = CartesianIndices(axes(B))
+
+Base.LinearIndices(BI::Indexer) = LinearIndices(_basis(BI))
+Base.LinearIndices(B::Type{<:AbstractBasis}) = LinearIndices((dim(B),))
 Base.LinearIndices(B::Type{<:TensorBasis}) = LinearIndices(axes(B))
 
 """
@@ -49,4 +53,4 @@ Compute the linear index for the basis element `b`.
 Usually you want to use `LinearIndices(typeof(b))` instead so that the linear index of
 multiple elements may be computed with less overhead.
 """
-linearindex(B::AbstractBasis) = LinearIndices(typeof(b))[b]
+linearindex(b::AbstractBasis) = LinearIndices(typeof(b))[b]

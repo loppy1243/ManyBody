@@ -4,11 +4,12 @@
 #=Modules=#  export RefStates
 #=Types=#    export AbstractBasis, TensorBasis, Basis, RefState, Vacuum, Fermi
 #=Shape=#    export rank, dim, fulldims
-#=Indexing=# export index, linearindex, indexbasis
+#=Indexing=# export indexer, index, linearindex, indexbasis
 #=Algebra=#  export norm, overlap
-#=Slater=#   export create, create!, annihil, annihil!
-#=MBBasis=#  export occ,   unocc, nocc,   nunocc, isocc,  isunocc,
-                    holes, parts, nholes, nparts, ishole, ispart,
+#=Sub=#      export superbasis, supbasis, superindex, supindex, superelem, supelem, subindexmap
+#=Slater=#   export create, create!, annihil, annihil!, createsgn, annihilsgn
+#=MBBasis=#  export occ,   unocc, occinds,  unoccinds, nocc,   nunocc, isocc,  isunocc,
+                    holes, parts, holeinds, partinds,  nholes, nparts, ishole, ispart,
                     spbasis
 
 abstract type AbstractBasis end
@@ -41,25 +42,31 @@ end
 Base.convert(::Type{Array{T}}, b::TensorBasis) where T = convert(Array{T, rank(b)}, b)
 (A::Type{<:Array})(b::AbstractBasis) = convert(A, b)
 
-norm(b::AbstractBasis) = one(Int)
-norm(T, b::AbstractBasis) = one(T)
-overlap(T, a::B, b::B) where B<:AbstractBasis = a == b ? norm(T, a) : zero(T)
-overlap(a::B, b::B) where B<:AbstractBasis = overlap(Int, a, b)
+norm(b::AbstractBasis) = 1
+overlap(a::B, b::B) where B<:AbstractBasis = a == b ? norm(a) : 0
 
-include("indexing.jl")
-include("iter.jl")
 include("mbbasis.jl")
-include("pairing.jl")
 include("subbasis.jl")
+
+include("pairing.jl")
 include("product.jl")
 include("slater.jl")
 
-@defSub Paired{P, L} <: Slater{Pairing{L}} begin s
-    SP = Pairing{L}
+include("indexing.jl")
+include("iter.jl")
 
-    P == count(findall(s.bits)) do I
-        s.bits[flipspin(SP[I])]
+@defSub Paired{A, L} <: Slater{Pairing{L}, 2} begin s
+    SPI = indexer(Pairing{L})
+
+    cnt = 0
+    for I in occinds(s)
+        cnt += flipspin(SPI[I]) in s || return false
     end
+    cnt == A
+end
+
+@defSub MBPairing{A, L} <: Slater{Pairing{L}, 2} begin s
+    nocc(s) == A
 end
 
 end # module States

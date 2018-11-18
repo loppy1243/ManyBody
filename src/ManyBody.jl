@@ -7,7 +7,7 @@ abstract type AbstractState end
 
 include("SpinMod.jl")
 include("Bases/main.jl")
-using .Bases: to_indices
 include("Operators.jl")
+include("Hamiltonians.jl"); export Hamiltonians
 
 end # module ManyBody

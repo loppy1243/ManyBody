@@ -8,13 +8,16 @@ spbasis(r::MBBasis) = spbasis(typeof(r))
 
 # Must define
 isocc(x) = MethodError(isocc, (x,)) |> throw
-occ(x) = [p for p in spbasis(mb) if isocc(x, p)]
-unocc(x) = [p for p in spbasis(mb) if isunocc(x, p)]
+occ(x) = [p for p in spbasis(x) if isocc(x, p)]
+occinds(x) = (SPB=spbasis(x); [i for i in indexer(SPB) if isocc(x, SPB[i])])
+unocc(x) = [p for p in spbasis(x) if isunocc(x, p)]
+unoccinds(x) = (SPB=spbasis(x); [i for i in indexer(SPB) if isunocc(x, SPB[i])])
 nocc(x) = length(occ(x))
 nunocc(x) = length(unocc(x))
 isunocc(x, p) = ~isocc(x, p)
 
 const holes, parts = occ, unocc
+const holeinds, partinds = occinds, unoccinds
 const nholes, nparts = nocc, nunocc
 const ishole, ispart = isocc, isunocc
 Base.in(p, ref::RefState) = isocc(mb, p)
