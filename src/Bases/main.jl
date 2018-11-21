@@ -4,7 +4,7 @@
 #=Modules=#  export RefStates
 #=Types=#    export AbstractBasis, TensorBasis, Basis, RefState, Vacuum, Fermi
 #=Shape=#    export rank, dim, fulldims
-#=Indexing=# export indexer, index, linearindex, indexbasis
+#=Indexing=# export indexer, linearindexer, index, linearindex, indexbasis
 #=Algebra=#  export norm, overlap
 #=Sub=#      export superbasis, supbasis, superindex, supindex, superelem, supelem, subindexmap
 #=Slater=#   export create, create!, annihil, annihil!, createsgn, annihilsgn
