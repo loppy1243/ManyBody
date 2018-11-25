@@ -31,7 +31,7 @@ _basis(::Type{<:LinearIndexer{B}}) where B<:AbstractBasis = B
 _basis(BI::LinearIndexer) = _basis(typeof(BI))
 
 Base.:+(B::Type{<:AbstractBasis}) = indexer(B)
-Base.:+(b::AbstractBasis) = linearindexer(b)
+Base.:+(b::AbstractBasis) = index(b)
 Base.:-(B::Type{<:AbstractBasis}) = linearindexer(B)
 Base.:-(b::AbstractBasis) = linearindex(b)
 
