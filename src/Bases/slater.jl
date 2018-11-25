@@ -67,9 +67,7 @@ Return the sign picked up by applying an annihilation/creation operator of `p` t
 
 Only returns +1 or -1.
 """
-function acsgn(s::Slater, p)
-    p::spbasis(s) = p
-
+function acsgn(s::Slater{SPB}, p::SPB) where SPB<:AbstractBasis
     i = linearindex(p)
     1 - 2(count(s.bits[1:i-1]) % 2)
 end
@@ -82,9 +80,7 @@ Apply a creation operator of `p` to `s`, changing `s` in place.
 Returns `(sgn, occ)` where `sgn` is the acquired sign and `occ` is the original occupation of
 `p` in `s`.
 """
-function create!(s::Slater, p)
-    p::spbasis(s) = p
-
+function create!(s::Slater{SPB}, p::SPB) where SPB<:AbstractBasis
     sgn = acsgn(s, p)
     bit = s.bits[p]
     bit && return (0, bit)
@@ -101,7 +97,7 @@ Apply a annihilation operator of `p` to `s`, changing `s` in place.
 Returns `(sgn, occ)` where `sgn` is the acquired sign and `occ` is the original occupation of
 `p` in `s`.
 """
-function annihil!(s::Slater, p)
+function annihil!(s::Slater{SPB}, p::SPB) where SPB<:AbstractBasis
     p::spbasis(s) = p
 
     sgn = acsgn(s, p)

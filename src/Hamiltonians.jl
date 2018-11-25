@@ -4,7 +4,6 @@ using ..ManyBody
 using ..ManyBody.Operators: @A
 
 pairing(δ, g) = function(X, Y)
-    X = supelem(X); Y = supelem(Y)
     SPB = spbasis(Y)
 
     f = sum(SPB) do p

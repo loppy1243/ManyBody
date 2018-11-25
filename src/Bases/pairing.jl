@@ -22,8 +22,7 @@ indexbasis(B::Type{<:Pairing}, level::Int, snum::Int) =
 ##############################################################################################
 nocc(ref::RefStates.Fermi{<:Pairing}) = 2(nlevels(spbasis(f)) - ref.fermilevel)
 nunocc(ref::RefStates.Fermi{<:Pairing}) = 2ref.fermilevel
-isocc(ref::RefStates.Fermi{<:Pairing}, b) where SPB<:Pairing =
-    convert(spbasis(ref), b).level <= ref.fermilevel
+isocc(ref::RefStates.Fermi{<:Pairing}, b::Pairing) = b.level <= ref.fermilevel
 
 ### Pairing methods
 ##############################################################################################

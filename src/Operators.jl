@@ -8,15 +8,16 @@ using Base.Cartesian
 ##############################################################################################
 tabulate!(f, A, Bs...; kws...) = tabulate(f, A, Bs; kws...)
 tabulate!(f, A, Bs::Tuple; kws...) = throw(MethodError(tabulate, (f, A, Bs)))
-@generated tabulate!(f, A::AbstractArray, Bs::NTuple{N}) where N = quote
+_tabulate!_generated(f, A, Bs, N) = quote
     @nloops $N b (d->Bs[d]) begin
-        bs = @ntuple($N, b)
-        ixs = Base.to_indices(A, bs)
-        _tabulate!_kernel(A, ixs, f, bs)
+        ixs = Base.to_indices(A, @ntuple($N, b))
+        _tabulate!_kernel(A, ixs, f, @ntuple($N, i -> supelem(b_i)))
     end
 
     A
 end
+@generated tabulate!(f, A::AbstractArray, Bs::NTuple{N}) where N =
+    _tabulate!_generated(f, A, Bs, N)
 @generated _tabulate!_kernel(A, ixs::NTuple{N}, f, bs::NTuple{M}) where {N, M} =
     :(@nref($N, A, i->ixs[i]) = @ncall($M, f, i->bs[i]))
 
