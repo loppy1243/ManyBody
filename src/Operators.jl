@@ -2,38 +2,35 @@
 export tabulate, tabulate!, normord, applyop, applyop!
 using ..ManyBody
 using Combinatorics: levicivita
-using Base.Cartesian: @ncall
+using Base.Cartesian
 
 ### Tabulation
 ##############################################################################################
-function tabulate!(f, A::AbstractArray, BL::Type{<:AbstractBasis}, BR::Type{<:AbstractBasis}
-                  ;leftindices=nothing, rightindices=nothing)
-    Il = leftindices === nothing ? tabulate_lindices(typeof(A), BL) : leftindices
-    Ir = rightindices === nothing ? tabulate_rindices(typeof(A), BR) : rightindices
-
-    for (bl, br) in Iterators.product(BL, BR)
-        _tabulate!_kernel(A, Il, bl, Ir, br, f)
+tabulate!(f, A, Bs...; kws...) = tabulate(f, A, Bs; kws...)
+tabulate!(f, A, Bs::Tuple; kws...) = throw(MethodError(tabulate, (f, A, Bs)))
+@generated tabulate!(f, A::AbstractArray, Bs::NTuple{N}) where N = quote
+    @nloops $N b (d->Bs[d]) begin
+        bs = @ntuple($N, b)
+        ixs = Base.to_indices(A, bs)
+        _tabulate!_kernel(A, ixs, f, bs)
     end
 
     A
 end
-_tabulate!_kernel(A, Il, bl, Ir, br, f) = A[Il[bl], Ir[br]] = f(bl, br)
+@generated _tabulate!_kernel(A, ixs::NTuple{N}, f, bs::NTuple{M}) where {N, M} =
+    :(@nref($N, A, i->ixs[i]) = @ncall($M, f, i->bs[i]))
 
-tabulate_lindices(A, B) = tabulate_indices(A, B)
-tabulate_rindices(A, B) = tabulate_indices(A, B)
-tabulate_indices(::Type{<:AbstractArray}, B) = CartesianIndices(B)
-tabulate_indices(::Type{<:AbstractMatrix}, B) = LinearIndices(B)
+tabulate(f, A, Bs...; kws...) = tabulate(f, A, Bs; kws...)
+tabulate(f, A, Bs::Tuple; kws...) = throw(MethodError(tabulate, (f, A, Bs)))
+tabulate(f, A::Type{<:AbstractArray}, B::Type{<:AbstractBasis}; kws...) =
+    tabulate(f, A, Tuple(B for _ in 1:ndims(A)); kws...)
+function tabulate(f, A::Type{<:AbstractArray}, Bs::Tuple; kws...)
+    sizes(xs::Tuple{}) = ()
+    sizes(xs::Tuple{Any, Vararg{Any}}) = (size(xs[1])..., sizes(Base.tail(xs))...)
 
-tabulate(f, T::Type, B::Type{<:AbstractBasis}) = tabulate(f, T, B, B)
-tabulate(f, T::Type, BL::Type{<:AbstractBasis}, BR::Type{<:AbstractBasis}) =
-    tabulate(f, Array{T}, BL, BR)
-function tabulate(f, A::Type{<:AbstractArray},
-                  BL::Type{<:AbstractBasis}, BR::Type{<:AbstractBasis})
-    lindices = tabulate_lindices(A, BL)
-    rindices = tabulate_rindices(A, BL)
-    dims = (size(lindices)..., size(rindices)...)
-
-    tabulate!(f, similar(A, dims), BL, BR; leftindices=lindices, rightindices=rindices)
+    ret = similar(A, sizes(Bs))
+    tabulate!(f, ret, Bs; kws...)
+    ret
 end
 
 ### Raising and Lowering Operators

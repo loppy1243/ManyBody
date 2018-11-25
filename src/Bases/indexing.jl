@@ -1,9 +1,26 @@
 using Base.Cartesian: @ncall
 
+#struct Indexer{B<:AbstractBasis, N, SupB<:AbstractBasis} <: AbstractArray{SupB, N}
+#    function Indexer{B, N, SupB}() where {B<:AbstractBasis, N, SupB<:AbstractBasis}
+#        @assert supbasis(B) == SupB
+#        new()
+#    end
+#end
+#Indexer{B}() where B<:TensorBasis = Indexer{B, rank(B), supbasis(B)}()
+#Indexer{B}() where B<:AbstractBasis = Indexer{B, 1, supbasis(B)}()
+
 struct Indexer{B<:AbstractBasis, N} <: AbstractArray{B, N} end
 Indexer{B}() where B<:TensorBasis = Indexer{B, rank(B)}()
 Indexer{B}() where B<:AbstractBasis = Indexer{B, 1}()
 
+#struct LinearIndexer{B<:AbstractBasis, SupB<:AbstractBasis} <: AbstractVector{SupB}
+#    function LinearIndexer{B, SupB}() where {B<:AbstractBasis, SupB<:AbstractBasis}
+#        @assert supbasis(B) == SupB
+#        new()
+#    end
+#end
+#LinearIndexer{B}() where B<:AbstractBasis = LinearIndexer{B, supbasis(B)}()
+#
 struct LinearIndexer{B<:AbstractBasis} <: AbstractVector{B} end
 
 indexer(B::Type{<:AbstractBasis}) = Indexer{B}()
@@ -12,6 +29,11 @@ _basis(::Type{<:Indexer{B}}) where B<:AbstractBasis = B
 _basis(BI::Indexer) = _basis(typeof(BI))
 _basis(::Type{<:LinearIndexer{B}}) where B<:AbstractBasis = B
 _basis(BI::LinearIndexer) = _basis(typeof(BI))
+
+Base.:+(B::Type{<:AbstractBasis}) = indexer(B)
+Base.:+(b::AbstractBasis) = linearindexer(b)
+Base.:-(B::Type{<:AbstractBasis}) = linearindexer(B)
+Base.:-(b::AbstractBasis) = linearindex(b)
 
 ## Fed up with this shit...
 Base.show(io::IO, x::Indexer) = show(io, collect(x))
@@ -72,3 +94,4 @@ Usually you want to use `LinearIndices(typeof(b))` instead so that the linear in
 multiple elements may be computed with less overhead.
 """
 linearindex(b::AbstractBasis) = LinearIndices(typeof(b))[b]
+linearindex(b::TensorBasis{1}) = Tuple(index(b))[1]

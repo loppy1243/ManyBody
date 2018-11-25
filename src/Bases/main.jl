@@ -69,4 +69,6 @@ end
     nocc(s) == A
 end
 
+Base.show(io::IO, mime::MIME"text/plain", B::Type{<:AbstractBasis}) = show(io, mime, +B)
+
 end # module States
