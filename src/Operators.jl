@@ -6,9 +6,17 @@ using Base.Cartesian
 
 ### Tabulation
 ##############################################################################################
+_proc_Bs(Bs::Tuple{Int, Int, Vararg{Any}}) = error("Repeated Int in tabulate[!]()")
+_proc_Bs(Bs::Tuple{Int, Any, Vararg{Any}}) =
+    ((Bs[2] for _=1:Bs[1])..., _proc_Bs(Base.tail(Base.tail(Bs)))...)
+_proc_Bs(Bs::Tuple{Any, Vararg{Any}}) =
+    (Bs[1], _proc_Bs(Base.tail(Bs))...)
+_proc_Bs(::Tuple{}) = ()
+
 tabulate!(f, A, Bs...; kws...) = tabulate(f, A, Bs; kws...)
 tabulate!(f, A, Bs::Tuple; kws...) = throw(MethodError(tabulate, (f, A, Bs)))
 _tabulate!_generated(f, A, Bs, N) = quote
+    Bs = _proc_Bs(Bs)
     @nloops $N b (d->Bs[d]) begin
         ixs = Base.to_indices(A, @ntuple($N, b))
         _tabulate!_kernel(A, ixs, f, @ntuple($N, i -> supelem(b_i)))
@@ -26,6 +34,8 @@ tabulate(f, A, Bs::Tuple; kws...) = throw(MethodError(tabulate, (f, A, Bs)))
 tabulate(f, A::Type{<:AbstractArray}, B::Type{<:AbstractBasis}; kws...) =
     tabulate(f, A, Tuple(B for _ in 1:ndims(A)); kws...)
 function tabulate(f, A::Type{<:AbstractArray}, Bs::Tuple; kws...)
+    Bs = _proc_Bs(Bs)
+
     sizes(xs::Tuple{}) = ()
     sizes(xs::Tuple{Any, Vararg{Any}}) = (size(xs[1])..., sizes(Base.tail(xs))...)
 
