@@ -15,7 +15,7 @@ pairingtest(; g_samples, atol) = @testset "Pairing Hamiltonian" begin
     MBBASIS = Bases.Paired{4, 4}
     for g in (g_samples == 1 ? 0.5 : range(-1.0, stop=1.0, length=g_samples))
         @debug "Running pairing matrix test" g
-        mat = tabulate(pairing(1, g), Array{Float64, 2}, MBBASIS)
+        mat = tabulate(pairing(1, g), Array{Float64}, 2, MBBASIS)
         diff =  mat - pairing44H_direct(1, g)
         @test all(abs.(diff) .< atol)
     end
