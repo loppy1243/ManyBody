@@ -9,4 +9,6 @@ flip(s::Spin) = Spin(~Bool(s))
 spinup(s::Spin) = Bool(s)
 spindown(s) = ~spinup(s)
 
+Base.show(io::IO, x::Spin) = println(io, spinup(x) ? '↑' : '↓')
+
 end # module SpinMod
