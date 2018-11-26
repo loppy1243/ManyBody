@@ -172,28 +172,30 @@ end
 normord(a::RaiseLowerOp) = normord(RefStates.Vacuum{spbasis(a)}(), a)
 function normord(R::RefState{B}, a::RaiseLowerOp{B}) where B<:AbstractBasis
     function comp(a, b)
-        if a[2] && b[2]
-            index(a[1]) >= index(b[1])
-        elseif !a[2] && !b[2]
-            index(a[1]) <= index(b[1])
-        else
-            a[2]
+        if a isa RaiseOp && b isa LowerOp
+            isunocc(R, a.state) || isunocc(R, b.state)
+        elseif a isa LowerOp && b isa RaiseOp
+            isocc(R, a.state) || isocc(R, b.state)
+        elseif a isa RaiseOp && b isa RaiseOp
+            if isocc(R, a.state) == isocc(R, b.state)
+                index(a.state) <= index(b.state)
+            else
+                isunocc(R, a.state) || isocc(R, b.state)
+            end
+        else#if a isa LowerOp && b isa LowerOp
+            if isocc(R, a.state) == isocc(R, b.state)
+                index(a.state) > index(b.state)
+            else
+                isocc(R, a.state) || isunocc(R, b.state)
+            end
         end
     end
 
-    xs = map(a.rlops) do b
-        (b.state, if b isa RaiseOp
-            ~isocc(R, b.state)
-        else
-            isocc(R, b.state)
-        end)
-    end
-
-    p = sortperm(xs, lt=comp)
+    p = sortperm(a.rlops, lt=comp)
     sgn = levicivita(p)
     ret = RaiseLowerOp{B}(a.rlops[p])
 
-    iszero(sgn) && error("IMPOSSIBLE")
+    @assert !iszero(sgn)
 
     (sgn, ret)
 end
