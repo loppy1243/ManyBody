@@ -2,7 +2,7 @@
 #export AbstractBasis, ConcreteBasis, LeafBasis, RefStates, RefState
 
 #=Modules=#  export RefStates
-#=Types=#    export AbstractBasis, TensorBasis, Basis, RefState, Vacuum, Fermi
+#=Types=#    export AbstractBasis, TensorBasis, Basis, MBBasis, RefState, Vacuum, Fermi
 #=Shape=#    export rank, dim, fulldims
 #=Indexing=# export indexer, linearindexer, index, linearindex, indexbasis
 #=Algebra=#  export norm, overlap
