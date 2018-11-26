@@ -204,7 +204,7 @@ function Base.show(io::IO, x::RaiseLowerOp)
 
     print(io, "A(", f(x.rlops[end]))
     for i in length(x.rlops)-1:-1:1
-        print(io, ", $(f(x.rlop[i]))")
+        print(io, ", $(f(x.rlops[i]))")
     end
     print(io, ")")
 end
