@@ -160,12 +160,8 @@ end
 
 _A(p::AbstractBasis) = LowerOp(p)
 _A(p::Raised{<:AbstractBasis}) = RaiseOp(p.val)
-function _A(sps::Vararg{Union{B, Raised{B}}}) where B<:AbstractBasis
-    rl(x::B) = LowerOp(x)
-    rl(x::Raised{B}) = RaiseOp(x.val)
-
-    RaiseLowerOp{B}(reverse(map(rl, sps)))
-end
+_A(sps::Vararg{Union{B, Raised{B}}}) where B<:AbstractBasis =
+    RaiseLowerOp{B}(reverse(map(_A, sps)))
 
 ##############################################################################################
 ##############################################################################################
@@ -191,7 +187,7 @@ function normord(R::RefState{B}, a::RaiseLowerOp{B}) where B<:AbstractBasis
         end
     end
 
-    p = sortperm(a.rlops, lt=comp)
+    p = sortperm(a.rlops, lt=!comp)
     sgn = levicivita(p)
     ret = RaiseLowerOp{B}(a.rlops[p])
 
@@ -206,9 +202,9 @@ function Base.show(io::IO, x::RaiseLowerOp)
     f(a::RaiseOp) = "$(a.state)'"
     f(a::LowerOp) = "$(a.state) "
 
-    print(io, "A(", f(x.rlops[1]))
-    for op in x.rlops[2:end]
-        print(io, ", $(f(op))")
+    print(io, "A(", f(x.rlops[end]))
+    for i in length(x.rlops)-1:-1:1
+        print(io, ", $(f(x.rlop[i]))")
     end
     print(io, ")")
 end
