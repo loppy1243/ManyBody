@@ -8,10 +8,11 @@ spbasis(r::MBBasis) = spbasis(typeof(r))
 
 # Must define
 isocc(x) = MethodError(isocc, (x,)) |> throw
+
 occ(x) = [p for p in spbasis(x) if isocc(x, p)]
-occinds(x) = (SPB=spbasis(x); [i for i in indexer(SPB) if isocc(x, SPB[i])])
+occinds(x) = (SPB=spbasis(x); [i for i in eachindex(SPB) if isocc(x, SPB[i])])
 unocc(x) = [p for p in spbasis(x) if isunocc(x, p)]
-unoccinds(x) = (SPB=spbasis(x); [i for i in indexer(SPB) if isunocc(x, SPB[i])])
+unoccinds(x) = (SPB=spbasis(x); [i for i in eachindex(SPB) if isunocc(x, SPB[i])])
 nocc(x) = length(occ(x))
 nunocc(x) = length(unocc(x))
 isunocc(x, p) = ~isocc(x, p)
