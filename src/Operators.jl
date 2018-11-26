@@ -13,8 +13,8 @@ _proc_Bs(Bs::Tuple{Any, Vararg{Any}}) =
     (Bs[1], _proc_Bs(Base.tail(Bs))...)
 _proc_Bs(::Tuple{}) = ()
 
-tabulate!(f, A, Bs...; kws...) = tabulate(f, A, Bs; kws...)
-tabulate!(f, A, Bs::Tuple; kws...) = throw(MethodError(tabulate, (f, A, Bs)))
+tabulate!(f, A, Bs...) = tabulate(f, A, Bs)
+tabulate!(f, A, Bs::Tuple) = throw(MethodError(tabulate, (f, A, Bs)))
 _tabulate!_generated(f, A, Bs, N) = quote
     Bs = _proc_Bs(Bs)
     @nloops $N b (d->Bs[d]) begin
@@ -29,18 +29,18 @@ end
 @generated _tabulate!_kernel(A, ixs::NTuple{N}, f, bs::NTuple{M}) where {N, M} =
     :(@nref($N, A, i->ixs[i]) = @ncall($M, f, i->bs[i]))
 
-tabulate(f, A, Bs...; kws...) = tabulate(f, A, Bs; kws...)
-tabulate(f, A, Bs::Tuple; kws...) = throw(MethodError(tabulate, (f, A, Bs)))
-tabulate(f, A::Type{<:AbstractArray}, B::Type{<:AbstractBasis}; kws...) =
-    tabulate(f, A, Tuple(B for _ in 1:ndims(A)); kws...)
-function tabulate(f, A::Type{<:AbstractArray}, Bs::Tuple; kws...)
+tabulate(f, A, Bs...) = tabulate(f, A, Bs)
+tabulate(f, A, Bs::Tuple) = throw(MethodError(tabulate, (f, A, Bs)))
+tabulate(f, A::Type{<:AbstractArray}, B::Type{<:AbstractBasis}) =
+    tabulate(f, A, Tuple(B for _ in 1:ndims(A)))
+function tabulate(f, A::Type{<:AbstractArray}, Bs::Tuple)
     Bs = _proc_Bs(Bs)
 
     sizes(xs::Tuple{}) = ()
     sizes(xs::Tuple{Any, Vararg{Any}}) = (size(xs[1])..., sizes(Base.tail(xs))...)
 
     ret = similar(A, sizes(Bs))
-    tabulate!(f, ret, Bs; kws...)
+    tabulate!(f, ret, Bs)
     ret
 end
 
