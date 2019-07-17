@@ -18,7 +18,7 @@ function Slater{SPB}(parts) where SPB<:AbstractBasis
     for p in parts
         p = convert(SPB, p)
 
-        bits[p] = true
+        bits[+p] = true
     end
 
     Slater{SPB, ndims(bits)}(bits)
@@ -28,20 +28,18 @@ Slater{SPB}(parts::BitArray) where SPB<:TensorBasis = Slater{SPB, ndims(parts)}(
 Slater{SPB}(ps...) where SPB<:AbstractBasis = Slater{SPB}(ps)
 Slater(ps::NTuple{<:Any, SPB}) where SPB<:AbstractBasis = Slater{SPB}(ps)
 Slater(ps::SPB...) where SPB<:AbstractBasis = Slater{SPB}(ps)
-Slater(ref::RefState) = Slater{spbasis(ref)}(occ(ref))
-Slater{SPB}(ref::RefState{SPB}) where SPB<:AbstractBasis = Slater{SPB}(occ(ref))
+Slater(ref::RefState) = Slater{spbasis(ref)}(eachocc(ref))
+Slater{SPB}(ref::RefState{SPB}) where SPB<:AbstractBasis = Slater{SPB}(eachocc(ref))
 
 Base.copy(s::Slater) = typeof(s)(copy(s.bits))
 
 ### MBBasis methods
 ##############################################################################################
-occ(s::Slater) = (SPI=indexer(spbasis(s)); map(i -> SPI[i], findall(s.bits)))
-occinds(s::Slater) = findall(s.bits)
-unocc(s::Slater) = (SPI=indexer(spbasis(s)); map(i -> SPI[i], findall(.~s.bits)))
-unoccinds(s::Slater) = findall(.~s.bits)
+eachocc_index(s::Slater) = (x for x in eachindex(spbasis(s)) if s.bits[+x])
+eachunocc_index(s::Slater) = (x for x in eachindex(spbasis(s)) if ~s.bits[+x])
 nocc(s::Slater) = count(s.bits)
 nunocc(s::Slater) = count(.~s.bits)
-isocc(s::Slater, p) = s.bits[convert(spbasis(s), p)]
+isocc(s::Slater, p) = s.bits[+convert(spbasis(s), p)]
 
 ### AbstractBasis methods
 ##############################################################################################
@@ -68,8 +66,7 @@ Return the sign picked up by applying an annihilation/creation operator of `p` t
 Only returns +1 or -1.
 """
 function acsgn(s::Slater{SPB}, p::SPB) where SPB<:AbstractBasis
-    i = linearindex(p)
-    1 - 2(count(s.bits[1:i-1]) % 2)
+    1 - 2(count(s.bits[1:(-p)-1]) % 2)
 end
 
 """
@@ -82,9 +79,9 @@ Returns `(sgn, occ)` where `sgn` is the acquired sign and `occ` is the original 
 """
 function create!(s::Slater{SPB}, p::SPB) where SPB<:AbstractBasis
     sgn = acsgn(s, p)
-    bit = s.bits[p]
+    bit = s.bits[+p]
     bit && return (0, bit)
-    s.bits[p] = true
+    s.bits[+p] = true
     (sgn, bit)
 end
 
@@ -101,16 +98,16 @@ function annihil!(s::Slater{SPB}, p::SPB) where SPB<:AbstractBasis
     p::spbasis(s) = p
 
     sgn = acsgn(s, p)
-    bit = s.bits[p]
+    bit = s.bits[+p]
     ~bit && return (0, bit)
-    s.bits[p] = false
+    s.bits[+p] = false
     (sgn, bit)
 end
 
 function Base.show(io::IO, x::Slater)
-    SPB = spbasis(x); SPI = indexer(SPB)
-    str = prod((SPI[I] in x ? string(SPI[I]) : "_") * (I == lastindex(SPI) ? "" : ", ")
-               for I in SPI)
+    SPB = spbasis(x)
+    str = prod(((+SPB)[I] in x ? string((+SPB)[I]) : "_") * (I == lastindex(+SPB) ? "" : ", ")
+               for I in eachindex(SPB))
     print(io, "Slater($(dim(SPB)))[$str]")
 end
 

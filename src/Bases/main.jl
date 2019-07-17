@@ -1,16 +1,18 @@
 @reexport module Bases
 #export AbstractBasis, ConcreteBasis, LeafBasis, RefStates, RefState
 
-#=Modules=#  export RefStates
-#=Types=#    export AbstractBasis, TensorBasis, Basis, MBBasis, RefState, Vacuum, Fermi
-#=Shape=#    export rank, dim, fulldims
-#=Indexing=# export indexer, linearindexer, index, linearindex, indexbasis
-#=Algebra=#  export norm, overlap
-#=Sub=#      export superbasis, supbasis, superindex, supindex, superelem, supelem, subindexmap
-#=Slater=#   export create, create!, annihil, annihil!, createsgn, annihilsgn
-#=MBBasis=#  export occ,   unocc, occinds,  unoccinds, nocc,   nunocc, isocc,  isunocc,
-                    holes, parts, holeinds, partinds,  nholes, nparts, ishole, ispart,
-                    spbasis
+#=Modules=#       export RefStates
+#=Types=#         export AbstractBasis, DualBasis, TensorBasis, Basis, MBBasis, RefState,
+                         Vacuum, Fermi
+#=Shape=#         export rank, dim, fulldims
+#=Indexing/Iter=# export index, indexbasis, eachelem
+#=Algebra=#       export norm, overlap
+#=Sub=#           export superbasis, supbasis, superindex, supindex, superelem, supelem,
+                         subindexmap
+#=Slater=#        export create, create!, annihil, annihil!, createsgn, annihilsgn
+#=MBBasis=#       export eachocc, eachunocc, eachocc_index, eachunocc_index, nocc, nunocc,
+                         isocc,  isunocc, eachhole, eachpart, eachhole_index, eachpart_index,
+                         nholes, nparts, ishole, ispart, spbasis
 
 abstract type AbstractBasis end
 abstract type TensorBasis{Rank} <: AbstractBasis end
@@ -35,7 +37,7 @@ function Base.convert(::Type{Array{T, N}}, b::TensorBasis{N}) where {T, N}
 end
 function Base.convert(::Type{Vector{T}}, b::AbstractBasis) where T
     ret = zeros(T, dim(typeof(b)))
-    ret[linearindex(b)] = oneunit(T)
+    ret[-b] = oneunit(T)
 
     ret
 end
@@ -45,6 +47,19 @@ Base.convert(::Type{Array{T}}, b::TensorBasis) where T = convert(Array{T, rank(b
 norm(b::AbstractBasis) = 1
 overlap(a::B, b::B) where B<:AbstractBasis = a == b ? norm(a) : 0
 
+struct DualBasis{B<:AbstractBasis} <: AbstractBasis
+    _elem::B
+end
+
+Base.adjoint(B::Type{<:AbstractBasis}) = DualBasis{B}
+Base.adjoint(C::Type{<:DualBasis{B}}) where B<:AbstractBasis = B
+Base.adjoint(b::AbstractBasis) = DualBasis(b)
+Base.adjoint(b::DualBasis) = b._elem
+
+(f::DualBasis{B})(b::B) where B<:AbstractBasis = overlap(f', b)
+
+include("arrayinterface.jl")
+
 include("mbbasis.jl")
 include("subbasis.jl")
 
@@ -52,15 +67,10 @@ include("pairing.jl")
 include("product.jl")
 include("slater.jl")
 
-include("indexing.jl")
-include("iter.jl")
-
 @defSub Paired{A, L} <: Slater{Pairing{L}, 2} begin s
-    SPI = indexer(Pairing{L})
-
     cnt = 0
-    for I in occinds(s)
-        cnt += flipspin(SPI[I]) in s || return false
+    for p in eachocc(s)
+        cnt += flipspin(p) in s || return false
     end
     cnt == A
 end
