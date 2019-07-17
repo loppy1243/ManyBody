@@ -14,8 +14,8 @@ normordtest() = @testset "Normal Ordering" begin
         @debug "Testing normord wrt. Vacuum"
 
         sgn, Na = normord(a)
-        Na_mat = sgn*tabulate(Na, Array{Int}, 2, MBBASIS)
-        correct_mat = tabulate(@A(s', q', p', r), Array{Int}, 2, MBBASIS)
+        Na_mat = sgn.*Na.(MBBASIS)
+        correct_mat = @A(s', q', p', r).(MBBASIS)
         @test all(Na_mat .== correct_mat)
     end
 
@@ -23,8 +23,8 @@ normordtest() = @testset "Normal Ordering" begin
         @debug "Testing normord wrt. Fermi{2}"
 
         sgn, Na = normord(RefStates.Fermi{SPBASIS}(2), a)
-        Na_mat = sgn*tabulate(Na, Array{Int}, 2, MBBASIS)
-        correct_mat = -tabulate(@A(s', r, p', q'), Array{Int}, 2, MBBASIS)
+        Na_mat = sgn.*Na.(MBBASIS)
+        correct_mat = .-@A(s', r, p', q').(MBBASIS)
         @test all(Na_mat .== correct_mat)
     end
 end
