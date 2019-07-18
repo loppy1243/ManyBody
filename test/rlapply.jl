@@ -1,22 +1,20 @@
 rlapplytest() = @testset "RaiseLowerOp Application" begin
     SPBASIS = Bases.Pairing{4}
     MBBASIS = Bases.Paired{2, 4}
-    MBI = indexer(MBBASIS)
 
-    p, q, r, s, t, u = SPBASIS.((1, 3, 2, 3, 4, 1),
-                                (SPINUP, SPINDOWN, SPINUP, SPINUP, SPINDOWN, SPINDOWN))
+    p, q, r, s, t, u = SPBASIS.((1, 3, 2, 3, 4, 1), (↑, ↓, ↑, ↑, ↓, ↓))
 
-    compare((sgn1, X′), (sgn2, X)) = sgn1 == sgn2 && (iszero(sgn1) || X′ == X)
-    @testset "One Body" begin for X in MBBASIS
+    ==′((sgn1, X′), (sgn2, X)) = sgn1 == sgn2 && (iszero(sgn1) || X′ == X)
+    @testset "One Body" begin for X in +MBBASIS
         X = convert(supbasis(MBBASIS), X)
         @test @A(p, p)(X)[1] |> iszero
         @test @A(q, q)(X)[1] |> iszero
         @test @A(p', p')(X)[1] |> iszero
         @test @A(q', q')(X)[1] |> iszero
-        @test compare(@A(p', p)(X), (p in X, X))
-        @test compare(@A(q', q)(X), (q in X, X))
-        @test compare(@A(p, p')(X), (1 - (p in X), X))
-        @test compare(@A(q, q')(X), (1 - (q in X), X))
+        @test @A(p', p)(X) ==′ (p in X, X)
+        @test @A(q', q)(X) ==′ (q in X, X)
+        @test @A(p, p')(X) ==′ (1 - (p in X), X)
+        @test @A(q, q')(X) ==′ (1 - (q in X), X)
 
         if p != q && !(p in X) || !(q in X)
             @test @A(p, q)(X)[1] |> iszero
@@ -30,7 +28,7 @@ rlapplytest() = @testset "RaiseLowerOp Application" begin
 
 #    ## Need to rewrite these.
 #    @testset "Two Body" begin
-#        Z = convert(supbasis(MBBASIS), MBI[1])
+#        Z = convert(supbasis(MBBASIS), (-MBBASIS)[1])
 #        @test @A(p, q, r, s)(Z)[1] |> iszero
 #        X = Bases.Slater(SPBASIS.((1, 2, 3, 3),
 #                                  (SPINDOWN, SPINDOWN, SPINDOWN, SPINUP)))

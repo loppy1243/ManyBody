@@ -64,10 +64,12 @@ applyop(op::RaiseLowerOp{SP}, b::Bases.Slater{SP}) where SP<:AbstractBasis =
 
 ### Matrix elements
 ##############################################################################################
+applyop(op::AnyRLOp, f::DualBasis, b::AbstractBasis) = applyop(op, f', b)
+
 @generated applyop(op::RLOp{SP}, b1::Bases.Slater{SP}, b2::Bases.Slater{SP}) where
                    SP<:AbstractBasis = quote
     sgn = acsign(b2, op.state)
-    sgn*$(op<:RaiseOp ? :(~b2.bits[op.state]) : :(b2.bits[op.state]))
+    sgn*$(op<:RaiseOp ? :(~b2.bits[+op.state]) : :(b2.bits[+op.state]))
 end
 
 function applyop(op::RaiseLowerOp{SP}, b1::Bases.Slater{SP}, b2::Bases.Slater{SP}) where
@@ -75,8 +77,7 @@ function applyop(op::RaiseLowerOp{SP}, b1::Bases.Slater{SP}, b2::Bases.Slater{SP
     true_bits = BitSet()
     false_bits = BitSet()
 
-    LI = LinearIndices(SP)
-    ixs = Int[LI[x.state] for x in op.rlops]
+    ixs = Int[-x.state for x in op.rlops]
 
     sgn = 1
     for (k, (i, rlop)) in zip(ixs, op.rlops) |> enumerate

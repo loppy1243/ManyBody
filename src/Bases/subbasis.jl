@@ -3,8 +3,8 @@ struct Sub{B<:AbstractBasis, T} <: AbstractBasis
 
     function Sub{B, T}(b::B) where {B<:AbstractBasis, T}
         isabstracttype(B) && @warn "Bases.Sub{B} defined with abstract B!"
-        @assert hasmethod(Base.in, Tuple{B, Type{Sub{B, T}}})
-        @assert b in Sub{B, T}
+        @assert hasmethod(Base.in, Tuple{B, _Arrayish{Sub{B, T}}})
+        @assert b in elems(Sub{B, T})
 
         new(b)
     end
@@ -40,13 +40,13 @@ Base.:(==)(x::Sub, y::Sub) = supelem(x) == supelem(y)
 Base.:(==)(x::AbstractBasis, y::Sub) = x == supelem(y)
 Base.:(==)(x::Sub, y::AbstractBasis) = supelem(x) == y
 
-Base.in(x, SB::Type{<:Sub}) = convert(superbasis(SB), x) in SB
+Base.in(x, a::_Arrayish{<:Sub}) = convert(superbasis(eltype(a)), x) in elems(SB)
 
 let IXMAPS=Dict{Any, Any}()
     global subindexmap
     function subindexmap(SB::Type{<:Sub})
         if !haskey(IXMAPS, SB)
-            IXMAPS[SB] = [index(b) for b in supbasis(SB) if b in SB]
+            IXMAPS[SB] = [index(b) for b in elems(supbasis(SB)) if b in elems(SB)]
         end
 
         IXMAPS[SB]
@@ -55,7 +55,7 @@ end
 
 dim(SB::Type{<:Sub}) = length(subindexmap(SB))
 index(sb::Sub) = findfirst(==(supindex(sb)), subindexmap(typeof(sb)))
-indexbasis(SB::Type{<:Sub}, i) = SB(indexer(supbasis(SB))[subindexmap(SB)[i]])
+indexbasis(SB::Type{<:Sub}, i::Int) = SB((+supbasis(SB))[subindexmap(SB)[i]])
 
 macro defSub(ty_expr::Expr, body_expr::Expr)
     get_tys(s) = [s]
@@ -99,7 +99,7 @@ macro defSub(ty_expr::Expr, body_expr::Expr)
 
     new_ty_esc, base_ty_esc = esc.((new_ty, base_ty))
 
-    in_expr(b) = add_where(:(Base.in($b::$base_ty_esc, ::Type{$new_ty_esc})))
+    in_expr(b) = add_where(:(Base.in($b::$base_ty_esc, ::_Arrayish{$new_ty_esc})))
 
     func_param_esc = esc(body_expr.args[2])
     body_esc = esc(Expr(:block, body_expr.args[3:end]...))

@@ -9,10 +9,10 @@ spbasis(r::MBBasis) = spbasis(typeof(r))
 # Must define
 isocc(x) = MethodError(isocc, (x,)) |> throw
 
-occ(x) = [p for p in spbasis(x) if isocc(x, p)]
-occinds(x) = (SPB=spbasis(x); [i for i in eachindex(SPB) if isocc(x, SPB[i])])
-unocc(x) = [p for p in spbasis(x) if isunocc(x, p)]
-unoccinds(x) = (SPB=spbasis(x); [i for i in eachindex(SPB) if isunocc(x, SPB[i])])
+occ(x) = [p for p in elems(spbasis(x)) if isocc(x, p)]
+occinds(x) = [SPB=spbasis(x); (i for i in eachindex(SPB) if isocc(x, (+SPB)[i]))]
+unocc(x) = [p for p in elems(spbasis(x)) if isunocc(x, p)]
+unoccinds(x) = [SPB=spbasis(x); (i for i in eachindex(SPB) if isunocc(x, (+SPB)[i]))]
 nocc(x) = length(occ(x))
 nunocc(x) = length(unocc(x))
 isunocc(x, p) = ~isocc(x, p)
@@ -33,7 +33,7 @@ module RefStates
     struct Fermi{SPB<:AbstractBasis} <: RefState{SPB}; fermilevel::Int end
 end # module RefStates
 occ(ref::RefStates.Vacuum) = Vector{spbasis(ref)}()
-unocc(ref::RefStates.Vacuum) = collect(spbasis(ref))
+unocc(ref::RefStates.Vacuum) = elems(spbasis(ref))
 nocc(::RefStates.Vacuum) = 0
 nunocc(ref::RefStates.Vacuum) = dim(spbasis(ref))
 isocc(ref::RefStates.Vacuum, s) = false
