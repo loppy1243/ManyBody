@@ -10,9 +10,9 @@
 #=Sub=#           export superbasis, supbasis, superindex, supindex, superelem, supelem,
                          subindexmap
 #=Slater=#        export create, create!, annihil, annihil!, createsgn, annihilsgn
-#=MBBasis=#       export occ,   unocc, occinds,  unoccinds, nocc,   nunocc, isocc,  isunocc,
-                         holes, parts, holeinds, partinds,  nholes, nparts, ishole, ispart,
-                         spbasis
+#=MBBasis=#       export eachocc, eachunocc, eachocc_index, eachunocc_index, nocc, nunocc,
+                         isocc,  isunocc, eachhole, eachpart, eachhole_index, eachpart_index,
+                         nholes, nparts, ishole, ispart, spbasis
 
 abstract type AbstractBasis end
 abstract type TensorBasis{Rank} <: AbstractBasis end
@@ -71,7 +71,7 @@ include("slater.jl")
 
 @defSub Paired{A, L} <: Slater{Pairing{L}, 2} begin s
     cnt = 0
-    for p in occ(s)
+    for p in eachocc(s)
         cnt += flipspin(p) in s || return false
     end
     cnt == A

@@ -28,17 +28,15 @@ Slater{SPB}(parts::BitArray) where SPB<:TensorBasis = Slater{SPB, ndims(parts)}(
 Slater{SPB}(ps...) where SPB<:AbstractBasis = Slater{SPB}(ps)
 Slater(ps::NTuple{<:Any, SPB}) where SPB<:AbstractBasis = Slater{SPB}(ps)
 Slater(ps::SPB...) where SPB<:AbstractBasis = Slater{SPB}(ps)
-Slater(ref::RefState) = Slater{spbasis(ref)}(occ(ref))
-Slater{SPB}(ref::RefState{SPB}) where SPB<:AbstractBasis = Slater{SPB}(occ(ref))
+Slater(ref::RefState) = Slater{spbasis(ref)}(eachocc(ref))
+Slater{SPB}(ref::RefState{SPB}) where SPB<:AbstractBasis = Slater{SPB}(eachocc(ref))
 
 Base.copy(s::Slater) = typeof(s)(copy(s.bits))
 
 ### MBBasis methods
 ##############################################################################################
-#occ(s::Slater) = ((+spbasis(s))[I] for I in occinds(s.bits))
-occinds(s::Slater) = findall(s.bits)
-#unocc(s::Slater) = map(I -> (+spbasis(s))[I], findall(.~s.bits))
-unoccinds(s::Slater) = findall(.~s.bits)
+eachocc_index(s::Slater) = (x for x in eachindex(spbasis(s)) if s.bits[+x])
+eachunocc_index(s::Slater) = (x for x in eachindex(spbasis(s)) if ~s.bits[+x])
 nocc(s::Slater) = count(s.bits)
 nunocc(s::Slater) = count(.~s.bits)
 isocc(s::Slater, p) = s.bits[+convert(spbasis(s), p)]
