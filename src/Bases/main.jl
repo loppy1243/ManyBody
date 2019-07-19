@@ -44,8 +44,10 @@ end
 Base.convert(::Type{Array{T}}, b::TensorBasis) where T = convert(Array{T, rank(b)}, b)
 (A::Type{<:Array})(b::AbstractBasis) = convert(A, b)
 
-norm(b::AbstractBasis) = 1
-overlap(a::B, b::B) where B<:AbstractBasis = a == b ? norm(a) : 0
+norm(T::Type, b::AbstractBasis) = one(T)
+norm(b::AbstractBasis) = norm(Int, b)
+overlap(T::Type, a::B, b::B) where B<:AbstractBasis = a == b ? norm(T, a) : zero(T)
+overlap(a::B, b::B) where B<:AbstractBasis = overlap(Int, a, b)
 
 struct DualBasis{B<:AbstractBasis} <: AbstractBasis
     _elem::B
