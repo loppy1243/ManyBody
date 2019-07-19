@@ -1,48 +1,8 @@
 @reexport module Operators
-export tabulate, tabulate!, normord, applyop, applyop!
+export normord, applyop, applyop!
 using ..ManyBody
 using Combinatorics: levicivita
 using Base.Cartesian
-
-### Tabulation
-##############################################################################################
-_proc_Bs(Bs::Tuple{Int, Int, Vararg{Any}}) = error("Repeated Int in tabulate[!]()")
-_proc_Bs(Bs::Tuple{Int, Any, Vararg{Any}}) =
-    ((Bs[2] for _=1:Bs[1])..., _proc_Bs(Base.tail(Base.tail(Bs)))...)
-_proc_Bs(Bs::Tuple{Any, Vararg{Any}}) =
-    (Bs[1], _proc_Bs(Base.tail(Bs))...)
-_proc_Bs(::Tuple{}) = ()
-
-tabulate!(f, A, Bs...) = tabulate(f, A, Bs)
-tabulate!(f, A, Bs::Tuple) = throw(MethodError(tabulate, (f, A, Bs)))
-_tabulate!_generated(f, A, Bs, N) = quote
-    Bs = _proc_Bs(Bs)
-    @nloops $N b (d->Bs[d]) begin
-        ixs = Base.to_indices(A, @ntuple($N, b))
-        _tabulate!_kernel(A, ixs, f, @ntuple($N, i -> supelem(b_i)))
-    end
-
-    A
-end
-@generated tabulate!(f, A::AbstractArray, Bs::NTuple{N}) where N =
-    _tabulate!_generated(f, A, Bs, N)
-@generated _tabulate!_kernel(A, ixs::NTuple{N}, f, bs::NTuple{M}) where {N, M} =
-    :(@nref($N, A, i->ixs[i]) = @ncall($M, f, i->bs[i]))
-
-tabulate(f, A, Bs...) = tabulate(f, A, Bs)
-tabulate(f, A, Bs::Tuple) = throw(MethodError(tabulate, (f, A, Bs)))
-tabulate(f, A::Type{<:AbstractArray}, B::Type{<:AbstractBasis}) =
-    tabulate(f, A, Tuple(B for _ in 1:ndims(A)))
-function tabulate(f, A::Type{<:AbstractArray}, Bs::Tuple)
-    Bs = _proc_Bs(Bs)
-
-    sizes(xs::Tuple{}) = ()
-    sizes(xs::Tuple{Any, Vararg{Any}}) = (size(xs[1])..., sizes(Base.tail(xs))...)
-
-    ret = similar(A, sizes(Bs))
-    tabulate!(f, ret, Bs)
-    ret
-end
 
 ### Raising and Lowering Operators
 ##############################################################################################
@@ -104,10 +64,12 @@ applyop(op::RaiseLowerOp{SP}, b::Bases.Slater{SP}) where SP<:AbstractBasis =
 
 ### Matrix elements
 ##############################################################################################
+applyop(op::AnyRLOp, f::DualBasis, b::AbstractBasis) = applyop(op, f', b)
+
 @generated applyop(op::RLOp{SP}, b1::Bases.Slater{SP}, b2::Bases.Slater{SP}) where
                    SP<:AbstractBasis = quote
     sgn = acsign(b2, op.state)
-    sgn*$(op<:RaiseOp ? :(~b2.bits[op.state]) : :(b2.bits[op.state]))
+    sgn*$(op<:RaiseOp ? :(~b2.bits[+op.state]) : :(b2.bits[+op.state]))
 end
 
 function applyop(op::RaiseLowerOp{SP}, b1::Bases.Slater{SP}, b2::Bases.Slater{SP}) where
@@ -115,8 +77,7 @@ function applyop(op::RaiseLowerOp{SP}, b1::Bases.Slater{SP}, b2::Bases.Slater{SP
     true_bits = BitSet()
     false_bits = BitSet()
 
-    LI = LinearIndices(SP)
-    ixs = Int[LI[x.state] for x in op.rlops]
+    ixs = Int[-x.state for x in op.rlops]
 
     sgn = 1
     for (k, (i, rlop)) in zip(ixs, op.rlops) |> enumerate
