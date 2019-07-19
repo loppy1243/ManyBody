@@ -1,8 +1,9 @@
 @reexport module Bases
 #export AbstractBasis, ConcreteBasis, LeafBasis, RefStates, RefState
 
-#=Modules=#  export RefStates
-#=Types=#    export AbstractBasis, TensorBasis, Basis, MBBasis, RefState, Vacuum, Fermi
+#=Modules=#       export RefStates
+#=Types=#         export AbstractBasis, DualBasis, TensorBasis, Basis, MBBasis, RefState,
+                         Vacuum, Fermi
 #=Shape=#         export rank, dim, fulldims
 #=Indexing/Iter=# export index, indexbasis, elems
 #=Algebra=#       export norm, overlap
@@ -45,6 +46,17 @@ Base.convert(::Type{Array{T}}, b::TensorBasis) where T = convert(Array{T, rank(b
 
 norm(b::AbstractBasis) = 1
 overlap(a::B, b::B) where B<:AbstractBasis = a == b ? norm(a) : 0
+
+struct DualBasis{B<:AbstractBasis} <: AbstractBasis
+    _elem::B
+end
+
+Base.adjoint(B::Type{<:AbstractBasis}) = DualBasis{B}
+Base.adjoint(C::Type{<:DualBasis{B}}) where B<:AbstractBasis = B
+Base.adjoint(b::AbstractBasis) = DualBasis(b)
+Base.adjoint(b::DualBasis) = b._elem
+
+(f::DualBasis{B})(b::B) where B<:AbstractBasis = overlap(f', b)
 
 include("arrayinterface.jl")
 

@@ -23,24 +23,40 @@ Base.size(a::Shaped) = fulldims(eltype(a))
 
 elems(B::Type{<:AbstractBasis}) = Flat(B)
 elems(B::Type{<:TensorBasis}) = Shaped(B)
+elems(B::Type{<:DualBasis}) = elems(B')'
 
 Base.eachindex(B::Type{<:AbstractBasis}) = eachindex(elems(B))
 Base.vec(a::Shaped) = Flat(a)
 Base.vec(a::Flat) = a
 Base.:+(B::Type{<:AbstractBasis}) = elems(B)
 Base.:-(B::Type{<:AbstractBasis}) = vec(elems(B))
+Base.:-(B::Type{<:DualBasis}) = vec(elems(B'))'
 Base.:+(b::AbstractBasis) = index(b)
 Base.:-(b::AbstractBasis) = _minus(b, IndexStyle(b))
 _minus(b::AbstractBasis, ::IndexLinear) = index(b)
 _minus(b::AbstractBasis, ::IndexCartesian) = LinearIndices(elems(typeof(b)))[index(b)]
 
+const _DUALBASIS_ERR_STR =
+    "Arrayish dual of TensorBasis with rank > 2 currently not supported."
+
+index(f::DualBasis) = index(f')
+index(f::DualBasis{<:TensorBasis}) = error(_DUALBASIS_ERR_STR)
+index(f::DualBasis{<:TensorBasis{1}}) = index(f')
+index(f::DualBasis{<:TensorBasis{2}}) = (I = index(f'); CartesianIndex(I[2], I[1]))
+
 indexbasis(B::Type{<:TensorBasis{N}}, I::NTuple{N, Int}) where N = indexbasis(B, I...)
 indexbasis(B::Type{<:TensorBasis{N}}, I::CartesianIndex{N}) where N =
     indexbasis(B, Tuple(I)...)
+indexbasis(B::Type{<:DualBasis}, i::Int) = indexbasis(B', i)'
+indexbasis(B::Type{<:DualBasis{<:TensorBasis{N}}}, I::Vararg{Int, N}) where N =
+    error(_DUALBASIS_ERR_STR)
+indexbasis(B::Type{<:DualBasis{<:TensorBasis{1}}}, i::Int) = indexbasis(B', i)'
+indexbasis(B::Type{<:DualBasis{<:TensorBasis{2}}}, i::Int, j::Int) = indexbasis(B', j, i)'
 
 ## Could possibly be more efficient to index a TensorBasis linearly, so we account for that.
 Base.IndexStyle(::Type{<:AbstractBasis}) = IndexLinear()
 Base.IndexStyle(::Type{<:TensorBasis}) = IndexCartesian()
+Base.IndexStyle(B::Type{<:DualBasis}) = IndexStyle(B')
 
 Base.IndexStyle(::Type{<:Flat}) = IndexLinear()
 Base.IndexStyle(S::Type{<:Shaped}) = IndexStyle(eltype(S))
