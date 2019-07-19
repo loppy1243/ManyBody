@@ -1,7 +1,8 @@
 @reexport module SpinMod
-export Spin, SPINUP, SPINDOWN, SPINS, flip, spinup, spindown
+export Spin, SPINUP, SPINDOWN, ↑, ↓, SPINS, flip, spinup, spindown
 
 @enum Spin::Bool SPINUP=true SPINDOWN=false
+const ↑, ↓ = SPINUP, SPINDOWN
 
 const SPINS = [SPINDOWN, SPINUP]
 
